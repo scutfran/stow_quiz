@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz Stow - Entra</title>
+<style>
+  :root{ --bg:#eef4fb; --card:#fff; --card2:#e6f0fc; --line:#c3d6ee; --txt:#0d2a4a; --mut:#53698a;
+         --blue:#1565c0; --blue2:#0d47a1; --ok:#1e8e55; --ko:#d13d3d; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,Arial,sans-serif}
+  body{font-size:18px;line-height:1.4;min-height:100vh}
+  header{background:var(--blue);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  header b{font-size:18px}
+  header span{font-size:15px;color:#dbe9fb;overflow-wrap:anywhere;text-align:right}
+  main{padding:14px 14px 40px;max-width:640px;margin:0 auto}
+  .banner{background:#fff3cd;color:#664d03;border:1px solid #ffe69c;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
+  .tag{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--card2);border:1px solid var(--line);color:var(--blue2);font-size:14px;margin-bottom:8px}
+  h2{margin:0 0 8px;color:var(--blue2);font-size:22px}
+  .q{font-size:21px;font-weight:700;margin:4px 0 14px}
+  .mut{color:var(--mut)}
+  input[type=text]{font:inherit;width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--line);margin:8px 0 12px}
+  button{font:inherit;width:100%;border-radius:14px;border:2px solid var(--blue);background:#fff;color:var(--blue2);padding:14px 14px;margin-bottom:10px;text-align:left;display:flex;gap:12px;align-items:flex-start;min-height:56px}
+  button.primary{background:var(--blue);color:#fff;text-align:center;justify-content:center;font-weight:700}
+  button:disabled{opacity:.7}
+  button .L{font-weight:800;min-width:24px}
+  button.sel{background:var(--blue);color:#fff}
+  button.right{border-color:var(--ok);background:rgba(30,142,85,.14);color:var(--txt)}
+  button.wrongpick{border-color:var(--ko);background:rgba(209,61,61,.12);color:var(--txt)}
+  .res-ok{color:var(--ok);font-weight:800;font-size:22px}
+  .res-ko{color:var(--ko);font-weight:800;font-size:22px}
+  .why{border-left:5px solid var(--blue);background:var(--card2);padding:10px 12px;border-radius:8px;margin-top:10px}
+  .big{font-size:42px;font-weight:800;color:var(--blue);text-align:center;margin:8px 0}
+</style>
+</head>
+<body>
+<header><b>📦 Quiz Stow</b><span id="who"></span></header>
+<main>
+  <div id="banner" class="banner" role="status" hidden></div>
+  <div id="view" aria-live="polite"></div>
+</main>
+
+<script src="peerjs.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var LKEY = "stow1to5_login_v1";
+  var room = (new URLSearchParams(location.search).get("r") || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  var view = document.getElementById("view"), bannerEl = document.getElementById("banner"), whoEl = document.getElementById("who");
+  var LETTERS = ["A","B","C","D","E","F"];
+  var peer = null, conn = null, login = "", last = null, timer = null, connTimer = null;
+
+  function h(tag, attrs){
+    var el = document.createElement(tag);
+    if(attrs){ for(var k in attrs){
+      var v = attrs[k];
+      if(k === "class") el.className = v;
+      else if(k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
+      else if(v === true) el.setAttribute(k, "");
+      else if(v !== false && v != null) el.setAttribute(k, v);
+    }}
+    for(var i = 2; i < arguments.length; i++){
+      var c = arguments[i];
+      if(c == null || c === false) continue;
+      el.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+    }
+    return el;
+  }
+  function banner(msg){ bannerEl.hidden = !msg; bannerEl.textContent = msg || ""; }
+
+  /* ---------- schermata login ---------- */
+  function viewLogin(){
+    var saved = ""; try{ saved = localStorage.getItem(LKEY) || ""; }catch(e){}
+    var inp = h("input", {type:"text", id:"login", value:saved, placeholder:"il tuo login", autocomplete:"off", autocapitalize:"none", "aria-label":"Il tuo login"});
+    var err = h("p", {class:"res-ko", role:"alert", style:"font-size:16px"});
+    view.replaceChildren(h("div", {class:"card"},
+      h("h2", null, "Entra nel quiz"),
+      room ? h("p", {class:"mut"}, "Stanza " + room.toUpperCase()) : h("p", {class:"res-ko"}, "Codice stanza mancante: scansiona di nuovo il QR."),
+      h("label", {for:"login"}, "Scrivi il tuo login"),
+      inp, err,
+      h("button", {class:"primary", onclick:function(){
+        var v = inp.value.trim().toLowerCase();
+        if(!room){ err.textContent = "Scansiona di nuovo il QR code."; return; }
+        if(!v){ err.textContent = "Inserisci il tuo login."; return; }
+        login = v.slice(0, 30);
+        try{ localStorage.setItem(LKEY, login); }catch(e){}
+        whoEl.textContent = login;
+        view.replaceChildren(h("div", {class:"card"}, h("p", null, "Connessione in corso...")));
+        connect();
+      }}, "Entra")));
+  }
+
+  /* ---------- rete ---------- */
+  function retry(ms){
+    clearTimeout(timer);
+    timer = setTimeout(connect, ms || 2500);
+  }
+  function resetPeer(){
+    try{ if(peer) peer.destroy(); }catch(e){}
+    peer = null; conn = null;
+  }
+  function connect(){
+    clearTimeout(connTimer);
+    if(typeof Peer === "undefined"){ banner("Libreria di rete non caricata: controlla la connessione internet."); return; }
+    if(!peer){
+      peer = new Peer({debug: 0});
+      peer.on("open", doConnect);
+      peer.on("disconnected", function(){ try{ peer.reconnect(); }catch(e){} });
+      peer.on("error", function(e){
+        if(e.type === "peer-unavailable"){
+          banner("Stanza non trovata. Il coach deve aver aperto il quiz: riprovo...");
+          retry(3000);
+        } else {
+          banner("Errore di rete (" + e.type + "). Riprovo...");
+          resetPeer(); retry(4000);
+        }
+      });
+    } else if(peer.open){ doConnect(); }
+  }
+  function doConnect(){
+    if(!peer || !login) return;
+    var c = peer.connect("stow1to5-" + room, {reliable: true});
+    conn = c;
+    connTimer = setTimeout(function(){
+      if(conn === c && !c.open){ banner("Il coach non risponde. Riprovo..."); try{ c.close(); }catch(e){} retry(2500); }
+    }, 10000);
+    c.on("open", function(){ clearTimeout(connTimer); banner(""); c.send({t: "hello", login: login}); });
+    c.on("data", onMsg);
+    c.on("close", function(){ if(conn === c){ banner("Connessione persa, riprovo..."); retry(2500); } });
+    c.on("error", function(){ if(conn === c){ banner("Errore di connessione, riprovo..."); retry(3000); } });
+  }
+  function send(m){ if(conn && conn.open){ try{ conn.send(m); }catch(e){} } }
+
+  /* ---------- messaggi dal coach ---------- */
+  function onMsg(m){
+    if(!m || !m.t) return;
+    if(m.t === "err"){
+      banner(m.msg || "Errore");
+      resetPeer(); clearTimeout(timer);
+      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Non posso entrare"), h("p", null, m.msg || ""),
+        h("button", {class:"primary", onclick:function(){ banner(""); viewLogin(); }}, "Cambia login")));
+      return;
+    }
+    last = m; draw();
+  }
+
+  function draw(){
+    var m = last; if(!m) return;
+    if(m.t === "lobby"){
+      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Sei dentro ✔"),
+        h("p", null, "Ciao " + login + ". Aspetta che il coach inizi il quiz.")));
+    } else if(m.t === "photo"){
+      view.replaceChildren(h("div", {class:"card"},
+        h("span", {class:"tag"}, "Slide " + m.n + " di " + m.of),
+        h("h2", null, m.titolo || "Guarda lo schermo"),
+        h("p", null, "Guarda lo schermo e partecipa a voce."),
+        h("p", {class:"mut"}, "Punti: " + m.total)));
+    } else if(m.t === "end"){
+      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Quiz finito 🏁"),
+        h("div", {class:"big"}, m.total + " punti"),
+        h("p", {style:"text-align:center"}, "Posizione " + m.pos + " su " + m.of)));
+    } else if(m.t === "q"){
+      drawQuestion(m);
+    }
+  }
+
+  function drawQuestion(m){
+    var card = h("div", {class:"card"},
+      h("span", {class:"tag"}, m.cat + " - " + m.n + "/" + m.of),
+      h("div", {class:"q"}, m.q));
+    m.opts.forEach(function(text, k){
+      var cls = "";
+      if(m.revealed){ if(k === m.right) cls = "right"; else if(k === m.picked) cls = "wrongpick"; }
+      else if(m.picked === k) cls = "sel";
+      card.appendChild(h("button", {class:cls, disabled: !!m.revealed, "aria-label":"Risposta " + LETTERS[k] + ": " + text,
+        onclick:function(){ m.picked = k; send({t:"ans", i:m.i, k:k}); draw(); }},
+        h("span", {class:"L"}, LETTERS[k]), h("span", null, text)));
+    });
+    if(m.revealed){
+      var good = m.picked === m.right;
+      card.appendChild(h("p", {class: good ? "res-ok" : "res-ko"}, good ? "✔ Giusto! +" + m.gained : (m.picked == null ? "Nessuna risposta" : "✘ Sbagliato")));
+      card.appendChild(h("div", {class:"why"}, h("b", null, "Perché: "), m.why || ""));
+      card.appendChild(h("p", {class:"mut"}, "Punti totali: " + m.total));
+    } else {
+      card.appendChild(h("p", {class:"mut"}, m.picked == null ? "Tocca la risposta." : "Risposta inviata. Puoi cambiarla finché il coach non rivela."));
+    }
+    view.replaceChildren(card);
+  }
+
+  viewLogin();
+})();
+</script>
+</body>
+</html>
