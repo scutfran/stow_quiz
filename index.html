@@ -110,6 +110,7 @@
 <main id="app" aria-live="polite"></main>
 
 <script src="peerjs.min.js"></script>
+<script src="rete.js"></script>
 <script src="qrcode.js"></script>
 <script src="contenuti.js"></script>
 <script>
@@ -195,7 +196,9 @@
   function netStart(room){
     if(typeof Peer === "undefined"){ NET.err = "Libreria online non caricata."; return; }
     NET.ready = false; NET.room = room;
-    var p = new Peer("stow1to5-" + room, {debug: 0});
+    var opts = {debug: 0};
+    if(window.RETE_ICE) opts.config = {iceServers: window.RETE_ICE};   /* server di appoggio da rete.js */
+    var p = new Peer("stow1to5-" + room, opts);
     NET.peer = p;
     p.on("open", function(){
       NET.ready = true; NET.err = "";

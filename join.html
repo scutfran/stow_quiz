@@ -42,6 +42,7 @@
 </main>
 
 <script src="peerjs.min.js"></script>
+<script src="rete.js"></script>
 <script>
 (function(){
   "use strict";
@@ -104,7 +105,9 @@
     clearTimeout(connTimer);
     if(typeof Peer === "undefined"){ banner("Libreria di rete non caricata: controlla la connessione internet."); return; }
     if(!peer){
-      peer = new Peer({debug: 0});
+      var opts = {debug: 0};
+      if(window.RETE_ICE) opts.config = {iceServers: window.RETE_ICE};   /* server di appoggio da rete.js */
+      peer = new Peer(opts);
       peer.on("open", doConnect);
       peer.on("disconnected", function(){ try{ peer.reconnect(); }catch(e){} });
       peer.on("error", function(e){
