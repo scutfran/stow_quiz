@@ -157,12 +157,12 @@
       view.replaceChildren(h("div", {class:"card"},
         h("span", {class:"tag"}, "Slide " + m.n + " di " + m.of),
         h("h2", null, m.titolo || "Guarda lo schermo"),
-        h("p", null, "Guarda lo schermo e partecipa a voce."),
-        h("p", {class:"mut"}, "Punti: " + m.total)));
+        h("p", null, "Guarda lo schermo e partecipa a voce.")));
     } else if(m.t === "end"){
-      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Quiz finito 🏁"),
-        h("div", {class:"big"}, m.total + " punti"),
-        h("p", {style:"text-align:center"}, "Posizione " + m.pos + " su " + m.of)));
+      view.replaceChildren(h("div", {class:"card", style:"text-align:center"},
+        h("div", {class:"big"}, "🏁"),
+        h("h2", null, "Quiz terminato, grazie a tutti!"),
+        h("p", null, "La qualità dello stow dipende da ognuno di noi.")));
     } else if(m.t === "q"){
       drawQuestion(m);
     }
@@ -171,7 +171,8 @@
   function drawQuestion(m){
     var card = h("div", {class:"card"},
       h("span", {class:"tag"}, m.cat + " - " + m.n + "/" + m.of),
-      h("div", {class:"q"}, m.q));
+      h("div", {class:"q"}, m.q),
+      m.hasImg ? h("p", {class:"mut"}, "👀 Guarda l'immagine sullo schermo del coach.") : null);
     m.opts.forEach(function(text, k){
       var cls = "";
       if(m.revealed){ if(k === m.right) cls = "right"; else if(k === m.picked) cls = "wrongpick"; }
@@ -184,7 +185,6 @@
       var good = m.picked === m.right;
       card.appendChild(h("p", {class: good ? "res-ok" : "res-ko"}, good ? "✔ Giusto! +" + m.gained : (m.picked == null ? "Nessuna risposta" : "✘ Sbagliato")));
       card.appendChild(h("div", {class:"why"}, h("b", null, "Perché: "), m.why || ""));
-      card.appendChild(h("p", {class:"mut"}, "Punti totali: " + m.total));
     } else {
       card.appendChild(h("p", {class:"mut"}, m.picked == null ? "Tocca la risposta." : "Risposta inviata. Puoi cambiarla finché il coach non rivela."));
     }

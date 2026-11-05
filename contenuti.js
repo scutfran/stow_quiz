@@ -24,6 +24,10 @@ window.CONTENUTI = {
     "sns": {
       "nome": "Stowed not scanned",
       "icona": "📡"
+    },
+    "uio": {
+      "nome": "UIO (Unexpected Item Overage)",
+      "icona": "🔎"
     }
   },
   "puntiDomanda": 10,
@@ -205,6 +209,32 @@ window.CONTENUTI = {
       ],
       "ok": 1,
       "why": "L'item sparisce di fatto dal sistema: ordini non evasi, ricerche inutili ed errori che pesano sul DPMO."
+    },
+    {
+      "cat": "uio",
+      "q": "Se ti compare questa schermata cosa fai?",
+      "img": "uio_unknown_item.jpg",
+      "opts": [
+        "Faccio un controllo dei 6 lati e scansiono il barcode con la gerarchia più alta",
+        "Premo subito \"No Remaining Barcodes\" e vado avanti",
+        "Scansiono il primo barcode che trovo",
+        "Stocco comunque l'articolo senza scansionarlo"
+      ],
+      "ok": 0,
+      "why": "Con \"Unknown Item\" si controllano tutti e 6 i lati dell'articolo e si scansiona il barcode con la gerarchia più alta indicata a schermo (QR, LPN, X00, B00, ISBN, EAN, UPC). \"No Remaining Barcodes\" si usa solo se dopo il controllo non c'è davvero nessun altro codice."
+    },
+    {
+      "cat": "uio",
+      "q": "Se ti compare questa schermata cosa fai?",
+      "img": "uio_confirm_container.jpg",
+      "opts": [
+        "Controllo bene il tote da cui ho preso l'articolo e confermo quel contenitore prima di stoccarlo",
+        "Confermo un contenitore qualsiasi tra quelli della postazione",
+        "Chiudo il messaggio e stocco l'articolo",
+        "Stocco l'articolo e confermo il contenitore dopo"
+      ],
+      "ok": 0,
+      "why": "Con \"Confirm Container\" devi indicare da quale contenitore arriva davvero l'articolo: controlli bene il tote da cui l'hai preso e lo confermi (scansione o luce sopra il contenitore) prima di stoccarlo. Confermare quello sbagliato sposta l'errore di inventario su un altro tote."
     }
   ],
   "foto": [
@@ -230,6 +260,18 @@ window.CONTENUTI = {
       "cat": "bin",
       "titolo": "Cosa può causare un articolo che sporge lasciato nel bin",
       "img": "pod04.jpg",
+      "note": ""
+    },
+    {
+      "cat": "bin",
+      "titolo": "Esempio di POD stoccato male",
+      "img": "pod05.jpg",
+      "note": ""
+    },
+    {
+      "cat": "bin",
+      "titolo": "Esempio di POD stoccato male",
+      "img": "pod06.jpg, pod07.jpg",
       "note": ""
     }
   ]

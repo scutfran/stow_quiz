@@ -72,6 +72,12 @@
   .imgbox{background:#f3f8ff;border:2px dashed var(--line);border-radius:14px;aspect-ratio:3/4;height:min(66vh,820px);max-width:100%;margin:0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;color:var(--mut);padding:10px}
   .imgbox img{width:100%;height:100%;object-fit:contain;display:block;border-radius:8px}
   .imgbox img.zoomable{cursor:zoom-in}
+  .imgbox.multi{flex-direction:column;gap:10px}
+  .imgbox.multi img{flex:1 1 0;min-height:0;width:100%;height:auto}
+  /* immagine dentro una domanda (es. schermate della station) */
+  .qimg{margin:0 0 16px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+  .qimg img{max-width:100%;max-height:34vh;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;display:block}
+  .qimg .ph{padding:24px 28px;border:2px dashed var(--line);border-radius:10px;color:var(--mut);background:#f3f8ff}
 
   /* foto a tutto schermo con zoom */
   #lb{position:fixed;inset:0;z-index:100;background:rgba(6,20,40,.95);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -258,7 +264,7 @@
     if(!S){ sendTo(c, {t:"lobby", login: login}); return; }
     if(S.players.indexOf(login) < 0) return;
     if(S.done){
-      sendTo(c, {t:"end", total: total(login), pos: ranking().indexOf(login) + 1, of: S.players.length});
+      sendTo(c, {t:"end"});   /* niente punti ne' posizione sul telefono */
       return;
     }
     var it = S.order[S.i];
@@ -266,10 +272,10 @@
       var d = C.domande[it.ref], rev = S.res[S.i], pk = (S.picks[S.i] || {})[login];
       m = { t:"q", n: S.i + 1, of: S.order.length, i: S.i, cat: catName(it.cat), q: d.q,
             opts: S.perm[S.i].map(function(o){ return d.opts[o]; }),
-            picked: pk == null ? null : pk, total: total(login) };
+            picked: pk == null ? null : pk, hasImg: !!d.img };
       if(rev){ m.revealed = true; m.right = S.right[S.i]; m.gained = rev.pts[login] || 0; m.why = d.why; }
     } else {
-      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: C.foto[it.ref].titolo, total: total(login) };
+      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: C.foto[it.ref].titolo };
     }
     sendTo(c, m);
   }
@@ -277,7 +283,20 @@
 
   function refreshLive(){
     if(S) render();
-    else if(NET.lobbyEl) fillLobby(NET.lobbyEl);
+    else if(NET.lobbyEl){ fillLobby(NET.lobbyEl); autofillLogins(); }
+  }
+
+  /* chi entra dal telefono compare da solo nei campi "login stower" della vista coach */
+  function autofillLogins(){
+    var inputs = NET.inputs || [];
+    if(!inputs.length) return;
+    NET.lobby.forEach(function(l){
+      if(NET.skip && NET.skip[l]) return;
+      var already = inputs.some(function(x){ return x.value.trim().toLowerCase() === l; });
+      if(already) return;
+      var free = inputs.find(function(x){ return !x.value.trim(); });
+      if(free){ free.value = l; free.dataset.auto = "1"; }
+    });
   }
 
   function fillLobby(el){
@@ -429,6 +448,18 @@
     var prev = load(KEY);
     var inputs = [];
     for(var i = 0; i < 5; i++) inputs.push(h("input", {type:"text", id:"login"+i, placeholder:"login stower "+(i+1), autocomplete:"off", "aria-label":"Login stower "+(i+1)}));
+    /* se il coach cancella un login compilato in automatico, non lo rimetto e non lo includo */
+    NET.skip = NET.skip || {};
+    inputs.forEach(function(x){
+      x.addEventListener("focus", function(){ x.dataset.prev = x.value.trim().toLowerCase(); });
+      x.addEventListener("input", function(){
+        var was = x.dataset.prev, now = x.value.trim().toLowerCase();
+        if(was && was !== now && NET.lobby.indexOf(was) >= 0) NET.skip[was] = true;
+        if(now) delete NET.skip[now];
+        x.dataset.prev = now;
+      });
+    });
+    NET.inputs = inputs;
     var chks = Object.keys(C.categorie).map(function(c){
       return h("label", {class:"chk"}, h("input", {type:"checkbox", value:c, checked:true}), catName(c));
     });
@@ -455,8 +486,9 @@
         h("div", {class:"row", style:"margin-top:14px"},
           h("button", {class:"primary", onclick:function(){
             var logins = [];
-            NET.lobby.forEach(function(l){ if(logins.indexOf(l) < 0) logins.push(l); });
             inputs.forEach(function(x){ var v = x.value.trim().toLowerCase(); if(v && logins.indexOf(v) < 0) logins.push(v); });
+            /* collegati dal telefono che non sono entrati nei 5 campi (e non tolti dal coach) */
+            NET.lobby.forEach(function(l){ if(logins.indexOf(l) < 0 && !NET.skip[l]) logins.push(l); });
             var cats = chks.map(function(l){ return l.firstChild; }).filter(function(x){ return x.checked; }).map(function(x){ return x.value; });
             if(!logins.length){ err.textContent = "Nessun partecipante: fai collegare un telefono o inserisci un login."; return; }
             if(!cats.length){ err.textContent = "Seleziona almeno un argomento."; return; }
@@ -470,6 +502,7 @@
       )
     );
     document.getElementById("hdrInfo").textContent = "";
+    autofillLogins();
     broadcast();
   }
 
@@ -512,7 +545,9 @@
       });
       if(opts.length < 2) return {error: label + ": servono almeno 2 risposte."};
       if(ok < 0) return {error: label + ": scegli la risposta corretta (deve avere un testo)."};
-      out.domande.push({cat: d.cat, q: q, opts: opts, ok: ok, why: String(d.why || "").trim()});
+      var qd = {cat: d.cat, q: q, opts: opts, ok: ok, why: String(d.why || "").trim()};
+      if(String(d.img || "").trim()) qd.img = String(d.img).trim();
+      out.domande.push(qd);
     }
     for(m = 0; m < W.foto.length; m++){
       var f = W.foto[m], t2 = String(f.titolo || "").trim();
@@ -540,7 +575,7 @@
           var o = JSON.parse(r.result);
           if(!o || !Array.isArray(o.domande) || !Array.isArray(o.foto)) throw new Error("formato non valido");
           W = {
-            domande: o.domande.map(function(d){ return {cat: d.cat, q: d.q || "", opts: Array.isArray(d.opts) ? d.opts : [], ok: Number(d.ok) || 0, why: d.why || ""}; }),
+            domande: o.domande.map(function(d){ return {cat: d.cat, q: d.q || "", opts: Array.isArray(d.opts) ? d.opts : [], ok: Number(d.ok) || 0, why: d.why || "", img: d.img || ""}; }),
             foto: o.foto.map(function(f){ return {cat: f.cat, titolo: f.titolo || "", img: f.img || "", note: f.note || ""}; })
           };
           msg.textContent = ""; draw();
@@ -615,6 +650,7 @@
       });
       if(d.opts.length < 6) card.appendChild(h("button", {class:"small", onclick: function(){ d.opts.push(""); draw(); }}, "+ Aggiungi risposta"));
       field(d, "why", "Spiegazione (compare dopo la risposta)", true).forEach(function(n){ card.appendChild(n); });
+      field(d, "img", "Immagine della domanda (facoltativa): nome del file o link Drive", false, "es. uio_unknown_item.jpg").forEach(function(n){ card.appendChild(n); });
       return card;
     }
 
@@ -626,7 +662,7 @@
           moveBtn(W.foto, fi, -1), moveBtn(W.foto, fi, 1),
           h("button", {class:"small ghost", onclick: function(){ if(confirm("Eliminare questa foto?")){ W.foto.splice(fi, 1); draw(); } }}, "🗑 Elimina")),
         field(f, "titolo", "Titolo (es. Pod 1 - Cosa non va in questo pod?)", false),
-        field(f, "img", "Link di condivisione Drive, ID del file o URL dell'immagine", false, "https://drive.google.com/file/d/..."),
+        field(f, "img", "Nome del file, link Drive o URL dell'immagine (più immagini: separale con una virgola)", false, "https://drive.google.com/file/d/..."),
         field(f, "note", "Note per il coach (facoltative)", true));
       return card;
     }
@@ -686,12 +722,15 @@
   }
 
   /* ---------- schermata di gioco ---------- */
-  function scoreBar(){
-    var bar = h("div", {class:"score"});
-    S.players.forEach(function(p){
-      bar.appendChild(h("div", {class:"pl"}, h("b", null, p + (NET.conns[p] ? " 📱" : "")), h("span", null, String(total(p)))));
-    });
-    return bar;
+  /* I punteggi NON sono piu' sullo schermo condiviso: il coach li apre in una finestra
+     separata (punteggi.html), che si aggiorna da sola leggendo lo stato salvato. */
+  function openScores(){
+    var w = window.open("punteggi.html", "stow1to5_punteggi", "width=1000,height=720");
+    if(w){ try{ w.focus(); }catch(e){} }
+    else alert("Il browser ha bloccato la finestra. Apri a mano punteggi.html nello stesso browser.");
+  }
+  function scoresBtn(){
+    return h("button", {class:"ghost small", onclick: openScores, title: "Apre i punteggi in una finestra separata (solo per il coach)"}, "📊 Punteggi (coach)");
   }
 
   function viewQuestion(){
@@ -748,28 +787,50 @@
 
     return h("div", {class:"card"},
       h("span", {class:"tag"}, catName(it.cat)),
-      h("div", {class:"q"}, d.q), opts, table,
+      h("div", {class:"q"}, d.q), questionImage(d), opts, table,
       revealed ? h("div", {class:"why"}, h("b", null, "Perché: "), d.why) : null,
       actions);
   }
 
+  /* immagine facoltativa di una domanda (campo "img" in contenuti.js), cliccabile per lo zoom */
+  function questionImage(d){
+    var url = imgUrl(d.img);
+    if(!url) return null;
+    var wrap = h("div", {class:"qimg"});
+    var img = h("img", {src: url, alt: "Immagine della domanda", tabindex: "0", role: "button", referrerpolicy: "no-referrer",
+      "aria-label": "Ingrandisci l'immagine della domanda"});
+    img.addEventListener("error", function(){ wrap.replaceChildren(h("div", {class:"ph"}, "📷 Immagine non trovata: " + d.img)); });
+    img.addEventListener("click", function(){ openLightbox(url, d.q); });
+    img.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openLightbox(url, d.q); } });
+    wrap.appendChild(img);
+    wrap.appendChild(h("span", {class:"mut", style:"font-size:15px"}, "🔍 Clicca l'immagine per ingrandirla"));
+    return wrap;
+  }
+
   function viewPhoto(){
     var i = S.i, it = S.order[i], f = C.foto[it.ref];
-    var url = imgUrl(f.img);
-    var box = h("div", {class:"imgbox"});
+    /* "img" puo' contenere piu' immagini separate da virgola: compaiono una sotto l'altra */
+    var urls = String(f.img || "").split(",").map(function(s){ return imgUrl(s); }).filter(Boolean);
+    var url = urls[0] || null;
+    var box = h("div", {class: "imgbox" + (urls.length > 1 ? " multi" : "")});
     function placeholder(msg){
       box.replaceChildren(h("div", null,
         h("p", null, "📷 " + msg),
         h("p", {class:"mut"}, "In contenuti.js incolla il link Drive (Condividi > Chiunque abbia il link) nel campo img di questa foto.")));
     }
-    if(url){
-      var img = h("img", {src: url, alt: f.titolo, referrerpolicy: "no-referrer", class: "zoomable", tabindex: "0", role: "button",
-        "aria-label": "Ingrandisci la foto: " + f.titolo});
-      img.addEventListener("error", function(){ placeholder("Foto non raggiungibile. Controlla la condivisione del file."); });
-      img.addEventListener("click", function(){ openLightbox(url, f.titolo); });
-      img.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openLightbox(url, f.titolo); } });
+    urls.forEach(function(u, k){
+      var label = f.titolo + (urls.length > 1 ? " (" + (k + 1) + " di " + urls.length + ")" : "");
+      var img = h("img", {src: u, alt: label, referrerpolicy: "no-referrer", class: "zoomable", tabindex: "0", role: "button",
+        "aria-label": "Ingrandisci la foto: " + label});
+      img.addEventListener("error", function(){
+        if(urls.length > 1) img.replaceWith(h("div", {class:"mut"}, "📷 Foto non trovata: " + u));
+        else placeholder("Foto non raggiungibile. Controlla la condivisione del file.");
+      });
+      img.addEventListener("click", function(){ openLightbox(u, label); });
+      img.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openLightbox(u, label); } });
       box.appendChild(img);
-    } else placeholder("Foto non ancora caricata.");
+    });
+    if(!urls.length) placeholder("Foto non ancora caricata.");
 
     var open = !!S.noteOpen[i];
     return h("div", {class:"card"},
@@ -789,7 +850,7 @@
   function nextBtn(){
     var last = S.i >= S.order.length - 1;
     return h("button", {class:"primary", onclick:function(){
-      if(last){ S.done = true; save(); storeHistory(); }
+      if(last){ S.done = true; save(); storeHistory(); autoExport(); }
       else S.i++;
       save(); render();
     }}, last ? "Vedi risultati 🏁" : "Avanti ▶");
@@ -808,41 +869,19 @@
     return lines.join("\n");
   }
 
+  /* Schermata finale sullo schermo condiviso: solo un messaggio di chiusura, nessun punteggio.
+     I punteggi restano nella pagina coach (punteggi.html) e nell'export automatico. */
   function viewResults(){
-    var head = h("tr", null, h("th", null, "#"), h("th", null, "Login"), h("th", null, "Punti"));
-    S.cats.forEach(function(c){ head.appendChild(h("th", null, catName(c))); });
-    head.appendChild(h("th", null, "Da rinforzare"));
-    var tbl = h("table", {class:"res"}, h("thead", null, head));
-    var body = h("tbody");
-    ranking().forEach(function(p, n){
-      var st = catStats(p), w = weakArea(p);
-      var tr = h("tr", null,
-        h("td", {class: n === 0 ? "rank1" : ""}, n === 0 ? "🏆" : String(n+1)),
-        h("td", null, p), h("td", null, h("b", null, String(total(p)))));
-      S.cats.forEach(function(c){
-        var s = st[c];
-        tr.appendChild(h("td", null, s.n ? s.ok + "/" + s.n : "-"));
-      });
-      tr.appendChild(h("td", null, w ? C.categorie[w].nome : "Nessuna ✔"));
-      body.appendChild(tr);
-    });
-    tbl.appendChild(body);
-
-    var ta = h("textarea", {class:"sum", readonly:true, "aria-label":"Riepilogo copiabile"});
-    ta.value = summaryText();
-
-    return h("div", {class:"card"},
-      h("h2", null, "Risultati - " + S.name),
-      tbl,
-      h("p", {class:"mut"}, "Usa 'Da rinforzare' per il follow-up individuale con ogni stower."),
-      ta,
-      h("div", {class:"row", style:"margin-top:14px"},
-        h("button", {class:"primary", onclick:function(){ exportCsv(false); }}, "⬇ Esporta questa sessione (CSV)"),
-        h("button", {onclick:function(){ ta.select(); try{ document.execCommand("copy"); }catch(e){} }}, "Copia riepilogo"),
-        h("span", {class:"spacer"}),
-        h("button", {class:"ghost", onclick:function(){
+    return h("div", {class:"card", style:"text-align:center;padding:48px 26px"},
+      h("div", {style:"font-size:64px;line-height:1"}, "🏁"),
+      h("h2", {style:"font-size:40px;margin:16px 0 10px"}, "Quiz terminato, grazie a tutti!"),
+      h("p", {style:"font-size:24px;margin:0"}, "La qualità dello stow dipende da ognuno di noi."),
+      h("div", {class:"row", style:"margin-top:36px;justify-content:center"},
+        scoresBtn(),
+        h("button", {class:"ghost small", onclick:function(){ exportCsv(false); }}, "⬇ Esporta CSV"),
+        h("button", {class:"ghost small", onclick:function(){
           S = null; try{ localStorage.removeItem(KEY); }catch(e){}
-          NET.lobby = Object.keys(NET.conns);
+          NET.lobby = Object.keys(NET.conns); NET.skip = {};
           render();
         }}, "Nuova sessione")));
   }
@@ -870,6 +909,77 @@
     try{ localStorage.setItem(HKEY, JSON.stringify(hist)); }catch(e){}
     S.stored = true;
   }
+  /* ---------- esportazione automatica a fine sessione ----------
+     Con almeno AUTO_MIN partecipanti scarica da solo, nella cartella download del browser:
+     - il CSV della sessione con i punteggi
+     - un'immagine PNG con la classifica (cosi' non serve mostrarla sullo schermo condiviso)
+     Avviene una sola volta per sessione. */
+  var AUTO_MIN = 3;
+  function stamp(){
+    var d = new Date(), p = function(n){ return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes());
+  }
+  function saveBlob(name, blob){
+    var url = URL.createObjectURL(blob);
+    var a = h("a", {href: url, download: name});
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+  function sessionCsv(){
+    var rows = sessionRows(S);
+    var cols = Object.keys(rows[0]);
+    var esc = function(v){ v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    return "\ufeff" + cols.join(";") + "\n" + rows.map(function(r){ return cols.map(function(c){ return esc(r[c]); }).join(";"); }).join("\n");
+  }
+  /* disegna la classifica su un canvas e la restituisce come PNG */
+  function scoresPng(cb){
+    var cats = S.cats, rank = ranking();
+    var colW = [70, 220, 110].concat(cats.map(function(){ return 230; })).concat([240]);
+    var W = colW.reduce(function(a, b){ return a + b; }, 0) + 60, rowH = 54, top = 150;
+    var H = top + rowH * (rank.length + 1) + 70;
+    var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    var g = cv.getContext("2d");
+    var F = '"Segoe UI", Arial, sans-serif';
+    g.fillStyle = "#eef4fb"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#1565c0"; g.fillRect(0, 0, W, 80);
+    g.fillStyle = "#ffffff"; g.font = "bold 30px " + F; g.textBaseline = "middle";
+    g.fillText("Coaching 1:5 Stow - Punteggi", 30, 40);
+    g.fillStyle = "#0d2a4a"; g.font = "20px " + F;
+    g.fillText((S.name || "Sessione") + "  ·  " + S.date + "  ·  " + S.players.length + " partecipanti", 30, 112);
+    function cells(y, vals, bold, color){
+      var x = 30;
+      vals.forEach(function(v, k){
+        g.fillStyle = color || "#0d2a4a"; g.font = (bold ? "bold " : "") + "20px " + F;
+        var t = String(v), max = colW[k] - 14;
+        while(g.measureText(t).width > max && t.length > 1) t = t.slice(0, -2) + "…";
+        g.fillText(t, x + 8, y + rowH / 2);
+        x += colW[k];
+      });
+    }
+    g.fillStyle = "#ffffff"; g.fillRect(30, top, W - 60, rowH * (rank.length + 1));
+    cells(top, ["#", "Login", "Punti"].concat(cats.map(function(c){ return C.categorie[c] ? C.categorie[c].nome : c; })).concat(["Da rinforzare"]), true, "#0d47a1");
+    rank.forEach(function(p, n){
+      var y = top + rowH * (n + 1), st = catStats(p), w = weakArea(p);
+      g.strokeStyle = "#c3d6ee"; g.beginPath(); g.moveTo(30, y); g.lineTo(W - 30, y); g.stroke();
+      cells(y, [String(n + 1), p, String(total(p))]
+        .concat(cats.map(function(c){ return st[c].n ? st[c].ok + "/" + st[c].n : "-"; }))
+        .concat([w ? (C.categorie[w] ? C.categorie[w].nome : w) : "Nessuna"]), false);
+    });
+    g.fillStyle = "#53698a"; g.font = "16px " + F;
+    g.fillText("Documento riservato al coach - generato automaticamente a fine sessione", 30, H - 30);
+    /* conversione sincrona: il download parte nello stesso clic di "Vedi risultati" */
+    var bin = atob(cv.toDataURL("image/png").split(",")[1]), arr = new Uint8Array(bin.length);
+    for(var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    cb(new Blob([arr], {type: "image/png"}));
+  }
+  function autoExport(){
+    if(!S || S.autoExported || S.players.length < AUTO_MIN) return;
+    S.autoExported = true; save();
+    var base = "quiz_stow_1to5_" + stamp();
+    try{ saveBlob(base + ".csv", new Blob([sessionCsv()], {type: "text/csv;charset=utf-8"})); }catch(e){}
+    try{ scoresPng(function(b){ if(b) saveBlob(base + "_punteggi.png", b); }); }catch(e){}
+  }
+
   function exportCsv(all){
     var sessions = all ? (load(HKEY) || []) : (S ? [S] : []);
     var rows = [];
@@ -886,13 +996,15 @@
   function render(){
     if(!S){ viewSetup(); return; }
     document.getElementById("hdrInfo").textContent = S.name + " - " + S.date;
-    if(S.done){ app.replaceChildren(scoreBar(), viewResults()); broadcast(); return; }
+    if(S.done){ app.replaceChildren(viewResults()); broadcast(); return; }
     var it = S.order[S.i];
     var pct = Math.round(S.i / S.order.length * 100);
     app.replaceChildren(
-      scoreBar(),
       h("div", {class:"progress", role:"progressbar", "aria-valuemin":"0", "aria-valuemax":"100", "aria-valuenow": String(pct)}, h("i", {style:"width:" + pct + "%"})),
-      h("p", {class:"mut"}, (it.k === "q" ? "Domanda " : "Foto ") + (S.i + 1) + " di " + S.order.length),
+      h("div", {class:"row", style:"margin-bottom:10px"},
+        h("span", {class:"mut"}, (it.k === "q" ? "Domanda " : "Foto ") + (S.i + 1) + " di " + S.order.length),
+        h("span", {class:"spacer"}),
+        scoresBtn()),
       it.k === "q" ? viewQuestion() : viewPhoto());
     broadcast();
   }
