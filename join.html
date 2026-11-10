@@ -40,11 +40,29 @@
   .right{border:2px solid var(--ok);background:rgba(30,142,85,.12);border-radius:12px;padding:12px 16px;margin:10px 0;font-weight:700}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .chips span{padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:#f7faff;font-weight:700}
+
+  /* pannello di stato del collegamento */
+  .diag{margin-bottom:12px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:17px}
+  .diag summary{padding:12px 14px;cursor:pointer;font-weight:700}
+  .diag.good summary{color:var(--ok)} .diag.bad summary{color:var(--ko)} .diag.wait summary{color:var(--mut)}
+  .diag .in{padding:0 14px 12px}
+  .diag .in div{padding:2px 0}
+  .diag pre{margin:8px 0 0;white-space:pre-wrap;font-size:14px;color:var(--mut);font-family:inherit}
+  .diag button{width:auto;min-height:44px;margin:8px 8px 0 0;padding:8px 14px;font-size:17px;text-align:center}
 </style>
 </head>
 <body>
 <header><b>📦 Quiz Stow</b><span id="who"></span></header>
 <main>
+  <details id="diag" class="diag wait">
+    <summary id="dsum">Controllo il collegamento...</summary>
+    <div class="in">
+      <div id="dlines"></div>
+      <button type="button" id="dretry">Riprova il collegamento</button>
+      <button type="button" id="dtest">Test rete</button>
+      <pre id="dlog"></pre>
+    </div>
+  </details>
   <div id="banner" class="banner" role="status" hidden></div>
   <div id="view" aria-live="polite"></div>
 </main>
@@ -77,6 +95,91 @@
   var tab = {q: null, cur: null, phase: null};
   var peer = null, ready = false, mode = null, LG = null, bannerTimer = null;
   whoEl.textContent = room ? "Stanza " + room.toUpperCase() : "";
+
+  /* ---------- diagnostica visibile: dice dove si ferma il collegamento ---------- */
+  var D = {err: "", log: []};
+  var dbox = document.getElementById("diag"), dsum = document.getElementById("dsum"),
+      dlines = document.getElementById("dlines"), dlog = document.getElementById("dlog");
+  var ERR_TXT = {
+    "network": "rete non raggiungibile",
+    "server-error": "server di collegamento non raggiungibile (rete bloccata?)",
+    "socket-error": "server di collegamento non raggiungibile (rete bloccata?)",
+    "socket-closed": "collegamento al server interrotto",
+    "peer-unavailable": "coach non trovato: usa il QR attuale mostrato dal coach",
+    "webrtc": "errore WebRTC del browser",
+    "browser-incompatible": "browser non compatibile",
+    "unavailable-id": "identificativo già in uso"
+  };
+  function two(n){ return (n < 10 ? "0" : "") + n; }
+  function ev(msg){
+    var t = new Date();
+    D.log.push(two(t.getHours()) + ":" + two(t.getMinutes()) + ":" + two(t.getSeconds()) + "  " + msg);
+    if(D.log.length > 16) D.log.shift();
+    paintDiag();
+  }
+  function hasRtc(){ return typeof RTCPeerConnection !== "undefined" || typeof webkitRTCPeerConnection !== "undefined"; }
+  function paintDiag(){
+    var libs = typeof Peer !== "undefined", rtc = hasRtc();
+    var open = players.filter(function(p){ return p.conn && p.conn.open; }).length;
+    var cls = "wait", sum;
+    if(!libs){ cls = "bad"; sum = "✘ Libreria di rete non caricata"; }
+    else if(!rtc){ cls = "bad"; sum = "✘ Questo browser non supporta il collegamento (WebRTC)"; }
+    else if(!room){ cls = "bad"; sum = "✘ Manca il codice stanza: riapri il link dal QR del coach"; }
+    else if(!ready){ cls = D.err ? "bad" : "wait"; sum = (D.err ? "✘ " : "… ") + "Server di collegamento" + (D.err ? ": " + D.err : ": connessione in corso"); }
+    else if(!players.length){ cls = "good"; sum = "✔ Rete pronta (stanza " + room.toUpperCase() + ")"; }
+    else if(open === players.length){ cls = "good"; sum = "✔ Collegato al coach (" + open + " di " + players.length + ")"; }
+    else { cls = D.err ? "bad" : "wait"; sum = (D.err ? "✘ " : "… ") + "Cerco il coach, stanza " + room.toUpperCase() + (D.err ? ": " + D.err : ""); }
+    dbox.className = "diag " + cls;
+    dsum.textContent = sum + "   (tocca per i dettagli)";
+    dlines.replaceChildren();
+    [[libs, "Libreria di rete caricata"],
+     [rtc, "Il browser supporta WebRTC"],
+     [ready, "Server di collegamento raggiunto"],
+     [!!room, "Codice stanza: " + (room ? room.toUpperCase() : "mancante")],
+     [players.length > 0 && open === players.length, "Coach collegato: " + open + " di " + players.length]
+    ].forEach(function(r){ dlines.appendChild(h("div", null, (r[0] ? "✔ " : "✘ ") + r[1])); });
+    dlog.textContent = D.log.join("\n");
+  }
+  function probe(url, label){
+    return new Promise(function(res){
+      var done = false;
+      var t = setTimeout(function(){ if(!done){ done = true; ev("✘ " + label + ": nessuna risposta in 8 secondi"); res(); } }, 8000);
+      if(!window.fetch){ done = true; clearTimeout(t); ev("? " + label + ": test non disponibile su questo browser"); return res(); }
+      fetch(url, {mode: "no-cors", cache: "no-store"})
+        .then(function(){ if(done) return; done = true; clearTimeout(t); ev("✔ " + label + ": raggiungibile"); res(); })
+        .catch(function(e){ if(done) return; done = true; clearTimeout(t); ev("✘ " + label + ": bloccato (" + (e && e.message ? e.message : "errore") + ")"); res(); });
+    });
+  }
+  /* prova vera del ponte (TURN): chiede un canale solo-relay e vede se il server risponde */
+  function probeTurn(){
+    return new Promise(function(res){
+      var done = false, pc = null;
+      function fin(msg){ if(done) return; done = true; clearTimeout(t); try{ if(pc) pc.close(); }catch(e){} ev(msg); res(); }
+      var t = setTimeout(function(){ fin("✘ ponte Metered: nessuna risposta in 10 secondi (rete che lo blocca?)"); }, 10000);
+      try{
+        var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+        if(!RTC){ return fin("✘ ponte Metered: WebRTC non disponibile su questo browser"); }
+        pc = new RTC({iceServers: window.RETE_ICE || [], iceTransportPolicy: "relay"});
+        pc.onicecandidate = function(e){ if(e.candidate && /typ relay/.test(e.candidate.candidate)) fin("✔ ponte Metered: raggiungibile"); };
+        pc.createDataChannel("x");
+        pc.createOffer().then(function(o){ return pc.setLocalDescription(o); }).catch(function(er){ fin("✘ ponte Metered: errore " + (er && er.message ? er.message : er)); });
+      }catch(ex){ fin("✘ ponte Metered: errore " + (ex && ex.message ? ex.message : ex)); }
+    });
+  }
+  document.getElementById("dtest").addEventListener("click", function(){
+    ev("test rete in corso...");
+    probe("https://0.peerjs.com/", "server di collegamento (0.peerjs.com)")
+      .then(function(){ return probeTurn(); })
+      .then(function(){ return probe(location.href.replace(/[#?].*$/, "").replace(/[^\/]*$/, "") + "rete.js", "sito del quiz"); })
+      .then(function(){ ev("test rete terminato"); });
+  });
+  document.getElementById("dretry").addEventListener("click", function(){
+    D.err = ""; ev("riprovo da capo");
+    try{ if(peer) peer.destroy(); }catch(e){}
+    peer = null; ready = false;
+    for(var i = 0; i < players.length; i++){ players[i].conn = null; players[i].tried = 0; }
+    startPeer(); paintDiag();
+  });
 
   function h(tag, attrs){
     var el = document.createElement(tag);
@@ -132,12 +235,17 @@
     if(typeof Peer === "undefined"){ banner("Libreria di rete non caricata: controlla la connessione internet."); return; }
     var opts = {debug: 0};
     if(window.RETE_ICE) opts.config = {iceServers: window.RETE_ICE};   /* server di appoggio da rete.js */
-    var p = new Peer(opts);
+    var p;
+    try{ p = new Peer(opts); }
+    catch(ex){ D.err = "il browser non riesce ad avviare il collegamento"; ev("errore avvio: " + (ex && ex.message ? ex.message : ex)); return; }
     peer = p; ready = false;
-    p.on("open", function(){ ready = true; tick(); });
-    p.on("disconnected", function(){ ready = false; try{ p.reconnect(); }catch(e){} });
+    ev("mi collego al server...");
+    p.on("open", function(id){ ready = true; if(D.err && /server|rete/.test(D.err)) D.err = ""; ev("server raggiunto"); tick(); });
+    p.on("disconnected", function(){ ready = false; ev("server: collegamento perso, riprovo"); try{ p.reconnect(); }catch(e){} });
     p.on("error", function(e){
-      if(e.type === "peer-unavailable"){ banner("Stanza non trovata: il coach deve aver aperto il quiz. Riprovo...", 6000); return; }
+      D.err = ERR_TXT[e.type] || ("errore " + e.type);
+      ev("errore: " + e.type + (e.message ? " - " + e.message : ""));
+      if(e.type === "peer-unavailable"){ banner("Coach non trovato: il quiz deve essere aperto sul PC e va usato il QR attuale.", 8000); return; }
       banner("Errore di rete (" + e.type + "). Riprovo...", 6000);
       ready = false; try{ p.destroy(); }catch(x){}
       if(peer === p){ peer = null; for(var i = 0; i < players.length; i++){ players[i].conn = null; players[i].tried = 0; } setTimeout(startPeer, 3000); }
@@ -145,12 +253,16 @@
   }
   function connectPlayer(pl){
     if(pl.conn){ try{ pl.conn.close(); }catch(e){} }
-    var c = peer.connect("stow1to5-" + room, {reliable: true});
+    ev("cerco il coach per " + pl.login + "...");
+    var c;
+    try{ c = peer.connect("stow1to5-" + room, {reliable: true}); }
+    catch(ex){ D.err = "impossibile aprire il canale verso il coach"; ev("errore: " + (ex && ex.message ? ex.message : ex)); return; }
     pl.conn = c;
-    c.on("open", function(){ if(pl.conn !== c) return; banner(""); try{ c.send({t: "hello", login: pl.login}); }catch(e){} draw(); });
+    c.on("open", function(){ if(pl.conn !== c) return; D.err = ""; banner(""); ev("✔ coach collegato per " + pl.login); try{ c.send({t: "hello", login: pl.login}); }catch(e){} draw(); });
     c.on("data", function(m){ if(pl.conn === c) onMsg(pl, m); });
-    c.on("close", function(){ if(pl.conn === c){ pl.conn = null; pl.tried = 0; draw(); } });
-    c.on("error", function(){ if(pl.conn === c){ pl.conn = null; pl.tried = 0; } });
+    c.on("close", function(){ if(pl.conn === c){ ev("collegamento chiuso per " + pl.login); pl.conn = null; pl.tried = 0; draw(); } });
+    c.on("error", function(er){ ev("errore canale " + pl.login + ": " + (er && er.type ? er.type : er)); if(pl.conn === c){ pl.conn = null; pl.tried = 0; } });
+    try{ c.on("iceStateChanged", function(s){ ev("rete " + pl.login + ": " + s); }); }catch(e){}
   }
   /* controllo periodico: ricollega chi ha perso la connessione */
   function tick(){
@@ -159,9 +271,11 @@
     players.forEach(function(pl){
       if(pl.conn && pl.conn.open) return;
       if(pl.tried && now - pl.tried < 10000) return;
+      if(pl.tried){ D.err = "il coach non risponde (rete che blocca il collegamento, o quiz chiuso sul PC)"; ev("nessuna risposta dal coach per " + pl.login + ": riprovo"); }
       pl.tried = now;
       connectPlayer(pl);
     });
+    paintDiag();
   }
   setInterval(tick, 2000);
   /* ridisegna se c'e' un invio in attesa di conferma */
@@ -355,6 +469,7 @@
     }
   }catch(e){}
   if(room) startPeer();
+  paintDiag();
   draw();
 })();
 </script>

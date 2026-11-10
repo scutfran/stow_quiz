@@ -193,7 +193,7 @@
      RETE: i telefoni degli stower si collegano a questa pagina (PeerJS).
      Il coach e' l'host: riceve le risposte e invia lo stato del quiz.
      ===================================================================== */
-  var NET = { peer: null, room: null, ready: false, err: "", conns: {}, lobby: [], lobbyEl: null };
+  var NET = { peer: null, room: null, ready: false, err: "", conns: {}, lobby: [], lobbyEl: null, stats: {inc: 0, hello: 0, last: ""} };
   var ALPHA = "abcdefghjkmnpqrstuvwxyz23456789";
 
   function genRoom(){ var s = ""; for(var i = 0; i < 5; i++) s += ALPHA.charAt(Math.floor(Math.random() * ALPHA.length)); return s; }
@@ -222,6 +222,8 @@
   function sendTo(c, m){ try{ if(c && c.open) c.send(m); }catch(e){} }
 
   function onConn(c){
+    NET.stats.inc++; NET.stats.last = "connessione in arrivo alle " + new Date().toLocaleTimeString();
+    refreshLive();
     c.on("data", function(m){ handleMsg(c, m); });
     c.on("close", function(){
       Object.keys(NET.conns).forEach(function(l){ if(NET.conns[l] === c) delete NET.conns[l]; });
@@ -233,6 +235,7 @@
   function handleMsg(c, m){
     if(!m || typeof m !== "object") return;
     if(m.t === "hello"){
+      NET.stats.hello++; NET.stats.last = "login ricevuto alle " + new Date().toLocaleTimeString();
       var login = String(m.login || "").trim().toLowerCase().slice(0, 30);
       if(!login){ sendTo(c, {t:"err", msg:"Login mancante."}); return; }
       if(!S){
@@ -331,6 +334,7 @@
       h("div", {class:"code", "aria-label":"Codice stanza"}, NET.room.toUpperCase()),
       h("div", {class:"urltxt"}, url),
       h("p", null, "Collegati: " + NET.lobby.filter(function(l){ return NET.conns[l]; }).length),
+      h("p", {class:"mut", style:"font-size:14px;margin:0 0 6px"}, "Diagnostica: connessioni in arrivo " + NET.stats.inc + " · login ricevuti " + NET.stats.hello + (NET.stats.last ? " · " + NET.stats.last : "")),
       h("div", {class:"joined"}, NET.lobby.map(function(l){
         return h("span", null, l + (NET.conns[l] ? " 📱" : " (offline)"));
       })));
