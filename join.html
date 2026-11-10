@@ -3,35 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quiz Stow - Entra</title>
+<title>Quiz Stow - Tablet</title>
 <style>
   :root{ --bg:#eef4fb; --card:#fff; --card2:#e6f0fc; --line:#c3d6ee; --txt:#0d2a4a; --mut:#53698a;
          --blue:#1565c0; --blue2:#0d47a1; --ok:#1e8e55; --ko:#d13d3d; }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-  body{font-size:18px;line-height:1.4;min-height:100vh}
-  header{background:var(--blue);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-  header b{font-size:18px}
+  body{font-size:20px;line-height:1.4;min-height:100vh}
+  header{background:var(--blue);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  header b{font-size:20px}
   header span{font-size:15px;color:#dbe9fb;overflow-wrap:anywhere;text-align:right}
-  main{padding:14px 14px 40px;max-width:640px;margin:0 auto}
-  .banner{background:#fff3cd;color:#664d03;border:1px solid #ffe69c;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:16px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
-  .tag{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--card2);border:1px solid var(--line);color:var(--blue2);font-size:14px;margin-bottom:8px}
-  h2{margin:0 0 8px;color:var(--blue2);font-size:22px}
-  .q{font-size:21px;font-weight:700;margin:4px 0 14px}
+  main{padding:16px 16px 40px;max-width:820px;margin:0 auto}
+  .banner{background:#fff3cd;color:#664d03;border:1px solid #ffe69c;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:17px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
+  .tag{display:inline-block;padding:2px 12px;border-radius:99px;background:var(--card2);border:1px solid var(--line);color:var(--blue2);font-size:15px;margin-bottom:8px}
+  h2{margin:0 0 8px;color:var(--blue2);font-size:26px}
+  .q{font-size:25px;font-weight:700;margin:6px 0 16px}
   .mut{color:var(--mut)}
-  input[type=text]{font:inherit;width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--line);margin:8px 0 12px}
-  button{font:inherit;width:100%;border-radius:14px;border:2px solid var(--blue);background:#fff;color:var(--blue2);padding:14px 14px;margin-bottom:10px;text-align:left;display:flex;gap:12px;align-items:flex-start;min-height:56px}
+  .turn{font-size:22px;margin-bottom:6px}
+  .turn b{color:var(--blue);font-size:28px}
+  input[type=text]{font:inherit;width:100%;padding:16px;border-radius:12px;border:1.5px solid var(--line);margin:8px 0 10px;font-size:22px}
+  button{font:inherit;width:100%;border-radius:14px;border:2px solid var(--blue);background:#fff;color:var(--blue2);padding:16px;margin-bottom:12px;text-align:left;display:flex;gap:12px;align-items:flex-start;min-height:60px;font-size:21px}
   button.primary{background:var(--blue);color:#fff;text-align:center;justify-content:center;font-weight:700}
-  button:disabled{opacity:.7}
-  button .L{font-weight:800;min-width:24px}
-  button.sel{background:var(--blue);color:#fff}
-  button.right{border-color:var(--ok);background:rgba(30,142,85,.14);color:var(--txt)}
-  button.wrongpick{border-color:var(--ko);background:rgba(209,61,61,.12);color:var(--txt)}
-  .res-ok{color:var(--ok);font-weight:800;font-size:22px}
-  .res-ko{color:var(--ko);font-weight:800;font-size:22px}
-  .why{border-left:5px solid var(--blue);background:var(--card2);padding:10px 12px;border-radius:8px;margin-top:10px}
-  .big{font-size:42px;font-weight:800;color:var(--blue);text-align:center;margin:8px 0}
+  button.ghost{border-color:var(--line);color:var(--mut)}
+  button .L{font-weight:800;min-width:26px}
+  button.x{width:auto;min-height:44px;margin:0;padding:6px 14px;border-color:var(--line);color:var(--mut);font-size:18px}
+  .prow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .prow b{flex:1;overflow-wrap:anywhere}
+  .center{text-align:center}
+  .bigicon{font-size:84px;line-height:1.1;margin:4px 0}
+  .okicon{color:var(--ok)}
+  .name{font-size:40px;font-weight:800;color:var(--blue);margin:6px 0 18px;overflow-wrap:anywhere}
+  .res-ok{color:var(--ok);font-weight:800}
+  .res-ko{color:var(--ko);font-weight:800}
+  .why{border-left:5px solid var(--blue);background:var(--card2);padding:10px 14px;border-radius:8px;margin:12px 0}
+  .right{border:2px solid var(--ok);background:rgba(30,142,85,.12);border-radius:12px;padding:12px 16px;margin:10px 0;font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chips span{padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:#f7faff;font-weight:700}
 </style>
 </head>
 <body>
@@ -46,11 +54,29 @@
 <script>
 (function(){
   "use strict";
-  var LKEY = "stow1to5_login_v1";
+  /* compatibilita' con browser meno recenti (es. Silk su tablet Fire) */
+  if(!Element.prototype.replaceChildren){
+    Element.prototype.replaceChildren = function(){
+      while(this.firstChild) this.removeChild(this.firstChild);
+      for(var i = 0; i < arguments.length; i++){
+        var n = arguments[i]; if(n == null) continue;
+        this.appendChild(typeof n === "string" ? document.createTextNode(n) : n);
+      }
+    };
+  }
+
+  /* ===== Un solo tablet per tutti: gli associate si passano il dispositivo e rispondono uno alla volta.
+     Ogni login ha la sua connessione verso il coach. Dopo la risposta compare solo la conferma:
+     la scelta non si vede mai, cosi' chi viene dopo non puo' copiare. ===== */
+  var SKEY = "stow1to5_tablet_v1";
+  var MAXP = 5;
   var room = (new URLSearchParams(location.search).get("r") || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   var view = document.getElementById("view"), bannerEl = document.getElementById("banner"), whoEl = document.getElementById("who");
   var LETTERS = ["A","B","C","D","E","F"];
-  var peer = null, conn = null, login = "", last = null, timer = null, connTimer = null;
+  var players = [];            /* {login, conn, st, tried, pending} */
+  var tab = {q: null, cur: null, phase: null};
+  var peer = null, ready = false, mode = null, LG = null, bannerTimer = null;
+  whoEl.textContent = room ? "Stanza " + room.toUpperCase() : "";
 
   function h(tag, attrs){
     var el = document.createElement(tag);
@@ -68,130 +94,268 @@
     }
     return el;
   }
-  function banner(msg){ bannerEl.hidden = !msg; bannerEl.textContent = msg || ""; }
-
-  /* ---------- schermata login ---------- */
-  function viewLogin(){
-    var saved = ""; try{ saved = localStorage.getItem(LKEY) || ""; }catch(e){}
-    var inp = h("input", {type:"text", id:"login", value:saved, placeholder:"il tuo login", autocomplete:"off", autocapitalize:"none", "aria-label":"Il tuo login"});
-    var err = h("p", {class:"res-ko", role:"alert", style:"font-size:16px"});
-    view.replaceChildren(h("div", {class:"card"},
-      h("h2", null, "Entra nel quiz"),
-      room ? h("p", {class:"mut"}, "Stanza " + room.toUpperCase()) : h("p", {class:"res-ko"}, "Codice stanza mancante: scansiona di nuovo il QR."),
-      h("label", {for:"login"}, "Scrivi il tuo login"),
-      inp, err,
-      h("button", {class:"primary", onclick:function(){
-        var v = inp.value.trim().toLowerCase();
-        if(!room){ err.textContent = "Scansiona di nuovo il QR code."; return; }
-        if(!v){ err.textContent = "Inserisci il tuo login."; return; }
-        login = v.slice(0, 30);
-        try{ localStorage.setItem(LKEY, login); }catch(e){}
-        whoEl.textContent = login;
-        view.replaceChildren(h("div", {class:"card"}, h("p", null, "Connessione in corso...")));
-        connect();
-      }}, "Entra")));
+  function banner(msg, ms){
+    clearTimeout(bannerTimer);
+    bannerEl.hidden = !msg; bannerEl.textContent = msg || "";
+    if(msg && ms) bannerTimer = setTimeout(function(){ banner(""); }, ms);
   }
+  function persist(){
+    try{ localStorage.setItem(SKEY, JSON.stringify({room: room, logins: players.map(function(p){ return p.login; })})); }catch(e){}
+  }
+  function newPlayer(login){ return {login: login, conn: null, st: null, tried: 0, pending: null}; }
+
+  /* ---------- elenco associate ---------- */
+  function normalize(raw){ return String(raw || "").trim().toLowerCase().slice(0, 30); }
+  function addLogin(raw){
+    var l = normalize(raw);
+    if(!room) return "Codice stanza mancante: riapri il link dal QR del coach.";
+    if(!l) return "Scrivi o scansiona un login.";
+    if(players.some(function(p){ return p.login === l; })) return l + " è già nell'elenco.";
+    if(players.length >= MAXP) return "Massimo " + MAXP + " associate.";
+    players.push(newPlayer(l));
+    persist(); tick(); draw();
+    return "";
+  }
+  function removePlayer(pl){
+    var c = pl.conn;
+    if(c && c.open){ try{ c.send({t: "bye"}); }catch(e){} setTimeout(function(){ try{ c.close(); }catch(e){} }, 300); }
+    else if(c){ try{ c.close(); }catch(e){} }
+    pl.conn = null;
+    players = players.filter(function(p){ return p !== pl; });
+    persist(); draw();
+  }
+  function started(){ return players.some(function(p){ return p.st && p.st.t !== "lobby"; }); }
 
   /* ---------- rete ---------- */
-  function retry(ms){
-    clearTimeout(timer);
-    timer = setTimeout(connect, ms || 2500);
-  }
-  function resetPeer(){
-    try{ if(peer) peer.destroy(); }catch(e){}
-    peer = null; conn = null;
-  }
-  function connect(){
-    clearTimeout(connTimer);
+  function startPeer(){
+    if(peer) return;
     if(typeof Peer === "undefined"){ banner("Libreria di rete non caricata: controlla la connessione internet."); return; }
-    if(!peer){
-      var opts = {debug: 0};
-      if(window.RETE_ICE) opts.config = {iceServers: window.RETE_ICE};   /* server di appoggio da rete.js */
-      peer = new Peer(opts);
-      peer.on("open", doConnect);
-      peer.on("disconnected", function(){ try{ peer.reconnect(); }catch(e){} });
-      peer.on("error", function(e){
-        if(e.type === "peer-unavailable"){
-          banner("Stanza non trovata. Il coach deve aver aperto il quiz: riprovo...");
-          retry(3000);
-        } else {
-          banner("Errore di rete (" + e.type + "). Riprovo...");
-          resetPeer(); retry(4000);
-        }
-      });
-    } else if(peer.open){ doConnect(); }
+    var opts = {debug: 0};
+    if(window.RETE_ICE) opts.config = {iceServers: window.RETE_ICE};   /* server di appoggio da rete.js */
+    var p = new Peer(opts);
+    peer = p; ready = false;
+    p.on("open", function(){ ready = true; tick(); });
+    p.on("disconnected", function(){ ready = false; try{ p.reconnect(); }catch(e){} });
+    p.on("error", function(e){
+      if(e.type === "peer-unavailable"){ banner("Stanza non trovata: il coach deve aver aperto il quiz. Riprovo...", 6000); return; }
+      banner("Errore di rete (" + e.type + "). Riprovo...", 6000);
+      ready = false; try{ p.destroy(); }catch(x){}
+      if(peer === p){ peer = null; for(var i = 0; i < players.length; i++){ players[i].conn = null; players[i].tried = 0; } setTimeout(startPeer, 3000); }
+    });
   }
-  function doConnect(){
-    if(!peer || !login) return;
+  function connectPlayer(pl){
+    if(pl.conn){ try{ pl.conn.close(); }catch(e){} }
     var c = peer.connect("stow1to5-" + room, {reliable: true});
-    conn = c;
-    connTimer = setTimeout(function(){
-      if(conn === c && !c.open){ banner("Il coach non risponde. Riprovo..."); try{ c.close(); }catch(e){} retry(2500); }
-    }, 10000);
-    c.on("open", function(){ clearTimeout(connTimer); banner(""); c.send({t: "hello", login: login}); });
-    c.on("data", onMsg);
-    c.on("close", function(){ if(conn === c){ banner("Connessione persa, riprovo..."); retry(2500); } });
-    c.on("error", function(){ if(conn === c){ banner("Errore di connessione, riprovo..."); retry(3000); } });
+    pl.conn = c;
+    c.on("open", function(){ if(pl.conn !== c) return; banner(""); try{ c.send({t: "hello", login: pl.login}); }catch(e){} draw(); });
+    c.on("data", function(m){ if(pl.conn === c) onMsg(pl, m); });
+    c.on("close", function(){ if(pl.conn === c){ pl.conn = null; pl.tried = 0; draw(); } });
+    c.on("error", function(){ if(pl.conn === c){ pl.conn = null; pl.tried = 0; } });
   }
-  function send(m){ if(conn && conn.open){ try{ conn.send(m); }catch(e){} } }
+  /* controllo periodico: ricollega chi ha perso la connessione */
+  function tick(){
+    if(!ready || !peer || !room) return;
+    var now = Date.now();
+    players.forEach(function(pl){
+      if(pl.conn && pl.conn.open) return;
+      if(pl.tried && now - pl.tried < 10000) return;
+      pl.tried = now;
+      connectPlayer(pl);
+    });
+  }
+  setInterval(tick, 2000);
+  /* ridisegna se c'e' un invio in attesa di conferma */
+  setInterval(function(){ if(players.some(function(p){ return p.pending; })) draw(); }, 1000);
 
   /* ---------- messaggi dal coach ---------- */
-  function onMsg(m){
+  function onMsg(pl, m){
     if(!m || !m.t) return;
     if(m.t === "err"){
-      banner(m.msg || "Errore");
-      resetPeer(); clearTimeout(timer);
-      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Non posso entrare"), h("p", null, m.msg || ""),
-        h("button", {class:"primary", onclick:function(){ banner(""); viewLogin(); }}, "Cambia login")));
+      banner(pl.login + ": " + (m.msg || "errore"), 9000);
+      var c = pl.conn; pl.conn = null;
+      try{ if(c) c.close(); }catch(e){}
+      players = players.filter(function(p){ return p !== pl; });
+      persist(); draw();
       return;
     }
-    last = m; draw();
+    pl.st = m;
+    if(m.t === "q" && pl.pending && m.picked != null) pl.pending = null;
+    draw();
   }
 
+  /* stato "rappresentativo" della slide corrente */
+  function slide(){
+    var best = null;
+    for(var i = 0; i < players.length; i++){
+      var s = players[i].st; if(!s) continue;
+      if(s.t === "end") return s;
+      if(!best || (s.n || 0) > (best.n || 0)) best = s;
+    }
+    return best;
+  }
+  function isUn(p, i){ return !p.st || p.st.i !== i || p.st.picked == null; }
+  function unanswered(i){ return players.filter(function(p){ return isUn(p, i); }); }
+
+  /* ---------- schermate ---------- */
   function draw(){
-    var m = last; if(!m) return;
-    if(m.t === "lobby"){
-      view.replaceChildren(h("div", {class:"card"}, h("h2", null, "Sei dentro ✔"),
-        h("p", null, "Ciao " + login + ". Aspetta che il coach inizi il quiz.")));
-    } else if(m.t === "photo"){
-      view.replaceChildren(h("div", {class:"card"},
-        h("span", {class:"tag"}, "Slide " + m.n + " di " + m.of),
-        h("h2", null, m.titolo || "Guarda lo schermo"),
-        h("p", null, "Guarda lo schermo e partecipa a voce.")));
-    } else if(m.t === "end"){
-      view.replaceChildren(h("div", {class:"card", style:"text-align:center"},
-        h("div", {class:"big"}, "🏁"),
-        h("h2", null, "Quiz terminato, grazie a tutti!"),
-        h("p", null, "La qualità dello stow dipende da ognuno di noi.")));
-    } else if(m.t === "q"){
-      drawQuestion(m);
-    }
+    var s = slide();
+    if(!players.length || !s || s.t === "lobby"){ showLogin(); return; }
+    mode = "view"; LG = null;
+    if(s.t === "end") return viewEnd();
+    if(s.t === "photo"){ tab.q = null; return viewPhoto(s); }
+    if(s.t === "q") return viewQuestion(s);
   }
 
-  function drawQuestion(m){
-    var card = h("div", {class:"card"},
-      h("span", {class:"tag"}, m.cat + " - " + m.n + "/" + m.of),
-      h("div", {class:"q"}, m.q),
-      m.hasImg ? h("p", {class:"mut"}, "👀 Guarda l'immagine sullo schermo del coach.") : null);
-    m.opts.forEach(function(text, k){
-      var cls = "";
-      if(m.revealed){ if(k === m.right) cls = "right"; else if(k === m.picked) cls = "wrongpick"; }
-      else if(m.picked === k) cls = "sel";
-      card.appendChild(h("button", {class:cls, disabled: !!m.revealed, "aria-label":"Risposta " + LETTERS[k] + ": " + text,
-        onclick:function(){ m.picked = k; send({t:"ans", i:m.i, k:k}); draw(); }},
-        h("span", {class:"L"}, LETTERS[k]), h("span", null, text)));
-    });
-    if(m.revealed){
-      var good = m.picked === m.right;
-      card.appendChild(h("p", {class: good ? "res-ok" : "res-ko"}, good ? "✔ Giusto! +" + m.gained : (m.picked == null ? "Nessuna risposta" : "✘ Sbagliato")));
-      card.appendChild(h("div", {class:"why"}, h("b", null, "Perché: "), m.why || ""));
-    } else {
-      card.appendChild(h("p", {class:"mut"}, m.picked == null ? "Tocca la risposta." : "Risposta inviata. Puoi cambiarla finché il coach non rivela."));
+  function showLogin(){
+    if(mode !== "login"){
+      var input = h("input", {type: "text", id: "login", placeholder: "Scansiona o scrivi il login", autocomplete: "off",
+        autocapitalize: "none", autocorrect: "off", spellcheck: "false", "aria-label": "Login dell'associate"});
+      var err = h("p", {class: "res-ko", role: "alert", style: "font-size:17px;margin:0 0 8px"});
+      var listEl = h("div");
+      var add = function(){
+        var e = addLogin(input.value);
+        err.textContent = e;
+        if(!e) input.value = "";
+        input.focus();
+      };
+      input.addEventListener("keydown", function(ev){ if(ev.key === "Enter" || ev.keyCode === 13){ ev.preventDefault(); add(); } });
+      view.replaceChildren(h("div", {class: "card"},
+        h("h2", null, "Aggiungi gli associate"),
+        h("p", {class: "mut", style: "margin-top:0"}, "Uno alla volta: scansiona il login (o scrivilo) e premi Aggiungi. Poi aspetta che il coach avvii il quiz."),
+        input, err,
+        h("button", {class: "primary", onclick: add}, "Aggiungi"),
+        listEl));
+      LG = {input: input, listEl: listEl};
+      mode = "login";
+      if(!room) err.textContent = "Codice stanza mancante: riapri il link dal QR del coach.";
     }
+    var list = LG.listEl;
+    list.replaceChildren();
+    if(!players.length){ list.appendChild(h("p", {class: "mut"}, "Nessun associate aggiunto.")); return; }
+    var begun = started();
+    players.forEach(function(p, k){
+      var online = p.conn && p.conn.open;
+      var row = h("div", {class: "prow"},
+        h("b", null, (k + 1) + ". " + p.login),
+        h("span", {class: online && p.st ? "res-ok" : "mut"}, online ? (p.st ? "✔ collegato" : "collegato...") : "connessione..."));
+      if(!begun) row.appendChild(h("button", {class: "x", "aria-label": "Togli " + p.login, onclick: function(){ removePlayer(p); }}, "✕"));
+      list.appendChild(row);
+    });
+    list.appendChild(h("p", {class: "mut"}, "Quando ci sono tutti, il coach preme «Inizia il quiz»."));
+  }
+
+  function viewQuestion(s){
+    var i = s.i;
+    if(tab.q !== i){
+      tab.q = i; tab.cur = null; tab.phase = null;
+      players.forEach(function(p){ p.pending = null; });
+    }
+    if(s.revealed){ viewReveal(s); return; }
+    var un = unanswered(i);
+    if(!un.length){ viewWaitAll(s); return; }
+    if(tab.phase === "answer" && tab.cur && players.indexOf(tab.cur) >= 0 && isUn(tab.cur, i)){
+      if(tab.cur.pending) viewPending(tab.cur); else viewAnswer(tab.cur, s);
+      return;
+    }
+    if(players.length === 1){ tab.cur = un[0]; tab.phase = "answer"; viewAnswer(tab.cur, s); return; }
+    tab.phase = "handover";
+    viewHandover(un[0], s, un.length < players.length);
+  }
+
+  /* passaggio del tablet: nessuna risposta visibile, solo la conferma */
+  function viewHandover(next, s, someoneAnswered){
+    view.replaceChildren(h("div", {class: "card center"},
+      someoneAnswered ? h("div", {class: "bigicon okicon", "aria-hidden": "true"}, "✔") : h("div", {class: "bigicon", "aria-hidden": "true"}, "📋"),
+      h("h2", null, someoneAnswered ? "Risposta registrata" : "Nuova domanda"),
+      h("p", {class: "mut"}, "Domanda " + s.n + " di " + s.of),
+      h("p", {style: "margin-bottom:0"}, "Passa il tablet a"),
+      h("div", {class: "name"}, next.login),
+      h("button", {class: "primary", onclick: function(){ tab.cur = next; tab.phase = "answer"; draw(); }}, "Sono " + next.login + " ▶")));
+  }
+
+  function viewAnswer(pl, s){
+    var card = h("div", {class: "card"},
+      h("div", {class: "turn"}, "Tocca a: ", h("b", null, pl.login)),
+      h("span", {class: "tag"}, s.cat + " - " + s.n + "/" + s.of),
+      h("div", {class: "q"}, s.q),
+      s.hasImg ? h("p", {class: "mut"}, "👀 Guarda l'immagine sullo schermo del coach.") : null);
+    s.opts.forEach(function(text, k){
+      card.appendChild(h("button", {"aria-label": "Risposta " + LETTERS[k] + ": " + text,
+        onclick: function(){ submit(pl, s, k); }},
+        h("span", {class: "L"}, LETTERS[k]), h("span", null, text)));
+    });
+    card.appendChild(h("p", {class: "mut", style: "margin:0"}, "La risposta non si può cambiare: tocca con attenzione."));
     view.replaceChildren(card);
   }
 
-  viewLogin();
+  function sendAns(pl){
+    var ok = false;
+    if(pl.conn && pl.conn.open){ try{ pl.conn.send({t: "ans", i: pl.pending.i, k: pl.pending.k}); ok = true; }catch(e){} }
+    pl.pending.at = Date.now(); pl.pending.sent = ok;
+  }
+  function submit(pl, s, k){
+    if(pl.pending) return;
+    pl.pending = {i: s.i, k: k, at: 0, sent: false};
+    sendAns(pl);
+    draw();
+  }
+  /* in attesa che il coach confermi la ricezione (poi compare la V) */
+  function viewPending(pl){
+    var late = Date.now() - pl.pending.at > 5000;
+    view.replaceChildren(h("div", {class: "card center"},
+      h("div", {class: "bigicon", "aria-hidden": "true"}, "⏳"),
+      h("h2", null, "Invio in corso..."),
+      late ? h("p", {class: "res-ko"}, "La risposta non è ancora arrivata al coach.") : null,
+      late ? h("button", {class: "primary", onclick: function(){ sendAns(pl); draw(); }}, "Riprova a inviare") : null));
+  }
+
+  function viewWaitAll(s){
+    view.replaceChildren(h("div", {class: "card center"},
+      h("div", {class: "bigicon okicon", "aria-hidden": "true"}, "✔"),
+      h("h2", null, "Risposta registrata"),
+      h("p", null, "Hanno risposto tutti: guarda lo schermo del coach."),
+      h("p", {class: "mut"}, "Domanda " + s.n + " di " + s.of)));
+  }
+
+  function viewReveal(s){
+    var chips = h("div", {class: "chips"});
+    players.forEach(function(p){
+      var rev = p.st && p.st.t === "q" && p.st.i === s.i && p.st.revealed;
+      chips.appendChild(h("span", {class: rev ? (p.st.gained > 0 ? "res-ok" : "res-ko") : "mut"},
+        (rev ? (p.st.gained > 0 ? "✔ " : "✘ ") : "… ") + p.login));
+    });
+    view.replaceChildren(h("div", {class: "card"},
+      h("span", {class: "tag"}, s.cat + " - " + s.n + "/" + s.of),
+      h("div", {class: "q"}, s.q),
+      h("div", {class: "right"}, "Risposta corretta: " + LETTERS[s.right] + " - " + s.opts[s.right]),
+      h("div", {class: "why"}, h("b", null, "Perché: "), s.why || ""),
+      chips,
+      h("p", {class: "mut"}, "Guarda lo schermo del coach e commentate insieme.")));
+  }
+
+  function viewPhoto(s){
+    view.replaceChildren(h("div", {class: "card center"},
+      h("span", {class: "tag"}, "Slide " + s.n + " di " + s.of),
+      h("h2", null, s.titolo || "Guarda lo schermo"),
+      h("p", null, "Guarda lo schermo e partecipa a voce.")));
+  }
+
+  function viewEnd(){
+    view.replaceChildren(h("div", {class: "card center"},
+      h("div", {class: "bigicon", "aria-hidden": "true"}, "🏁"),
+      h("h2", null, "Quiz terminato, grazie a tutti!"),
+      h("p", null, "La qualità dello stow dipende da ognuno di noi.")));
+  }
+
+  /* ---------- avvio ---------- */
+  try{
+    var saved = JSON.parse(localStorage.getItem(SKEY));
+    if(saved && saved.room === room && Array.isArray(saved.logins)){
+      saved.logins.slice(0, MAXP).forEach(function(l){ if(l) players.push(newPlayer(l)); });
+    }
+  }catch(e){}
+  if(room) startPeer();
+  draw();
 })();
 </script>
 </body>

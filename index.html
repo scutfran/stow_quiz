@@ -247,12 +247,25 @@
       var old = NET.conns[login];
       if(old && old !== c){ try{ old.close(); }catch(e){} }
       NET.conns[login] = c; c._login = login;
+      if(!S && NET.skip) delete NET.skip[login];   /* riaggiunto dal tablet: torna in elenco */
       refreshLive();
       pushState(login);
+    } else if(m.t === "bye" && c._login){
+      /* l'associate e' stato tolto dal tablet prima dell'inizio: lo tolgo anche qui */
+      var bl = c._login;
+      if(!S){
+        var ix = NET.lobby.indexOf(bl); if(ix >= 0) NET.lobby.splice(ix, 1);
+        (NET.inputs || []).forEach(function(x){
+          if(x.dataset.auto === "1" && x.value.trim().toLowerCase() === bl){ x.value = ""; x.dataset.auto = ""; }
+        });
+      }
+      if(NET.conns[bl] === c) delete NET.conns[bl];
+      refreshLive();
     } else if(m.t === "ans" && S && c._login && !S.done){
       var p = c._login, i = S.i;
       if(S.players.indexOf(p) < 0 || m.i !== i || S.res[i] || S.order[i].k !== "q") return;
       if(typeof m.k !== "number" || m.k < 0 || m.k >= S.perm[i].length) return;
+      if((S.picks[i] || {})[p] != null) { pushState(p); return; }   /* risposta gia' registrata: non si cambia */
       (S.picks[i] = S.picks[i] || {})[p] = m.k;
       save(); render();
     }
@@ -314,7 +327,7 @@
     var left = h("div", null,
       imgSrc ? h("img", {class:"qr", src: imgSrc, alt: "QR code per entrare nel quiz"}) : h("p", {class:"res-ko"}, "QR non generato"));
     var right = h("div", null,
-      h("p", {class:"mut", style:"margin:0"}, "Scansiona il QR col telefono e scrivi il tuo login"),
+      h("p", {class:"mut", style:"margin:0"}, "Apri questo link dal tablet e aggiungi i login degli associate"),
       h("div", {class:"code", "aria-label":"Codice stanza"}, NET.room.toUpperCase()),
       h("div", {class:"urltxt"}, url),
       h("p", null, "Collegati: " + NET.lobby.filter(function(l){ return NET.conns[l]; }).length),
@@ -471,11 +484,11 @@
 
     app.replaceChildren(
       h("div", {class:"card"},
-        h("h2", null, "Collega i telefoni"),
+        h("h2", null, "Collega il tablet"),
         NET.lobbyEl),
       h("div", {class:"card"},
         h("h2", null, "Nuova sessione"),
-        h("p", {class:"mut"}, "Chi si collega col telefono viene aggiunto da solo. Qui puoi aggiungere a mano chi non ha il telefono (da 1 a 5 login)."),
+        h("p", {class:"mut"}, "I login aggiunti dal tablet compaiono qui da soli. Puoi aggiungere o correggere a mano (da 1 a 5 login)."),
         C._custom ? h("div", {class:"banner"}, "✏ Stai usando domande modificate nell'editor (" + C.domande.length + " domande, " + C.foto.length + " foto).") : null,
         C._discarded ? h("div", {class:"banner"}, "ℹ contenuti.js è stato aggiornato: ho scartato le vecchie modifiche salvate nel browser.") : null,
         h("div", {class:"grid5"}, inputs),
@@ -487,10 +500,10 @@
           h("button", {class:"primary", onclick:function(){
             var logins = [];
             inputs.forEach(function(x){ var v = x.value.trim().toLowerCase(); if(v && logins.indexOf(v) < 0) logins.push(v); });
-            /* collegati dal telefono che non sono entrati nei 5 campi (e non tolti dal coach) */
+            /* collegati dal tablet che non sono entrati nei 5 campi (e non tolti dal coach) */
             NET.lobby.forEach(function(l){ if(logins.indexOf(l) < 0 && !NET.skip[l]) logins.push(l); });
             var cats = chks.map(function(l){ return l.firstChild; }).filter(function(x){ return x.checked; }).map(function(x){ return x.value; });
-            if(!logins.length){ err.textContent = "Nessun partecipante: fai collegare un telefono o inserisci un login."; return; }
+            if(!logins.length){ err.textContent = "Nessun partecipante: aggiungi i login dal tablet o inseriscili qui."; return; }
             if(!cats.length){ err.textContent = "Seleziona almeno un argomento."; return; }
             startSession(logins, cats, sessName.value.trim());
           }}, "Inizia il quiz ▶"),
@@ -752,7 +765,7 @@
       var tr = h("tr", null, h("th", {scope:"row"}, p + (online ? " 📱" : "")));
       var td = h("td", {class:"btns"});
       if(online){
-        td.appendChild(h("span", {class:"mut"}, "risponde dal telefono"));
+        td.appendChild(h("span", {class:"mut"}, "risponde dal tablet"));
       } else {
         perm.forEach(function(_, k){
           td.appendChild(h("button", {class:"pick", "aria-pressed": String(picks[p] === k), disabled: revealed,
