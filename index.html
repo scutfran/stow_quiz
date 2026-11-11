@@ -171,7 +171,10 @@
     return el;
   }
   function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+  /* Lo stato della sessione si salva a OGNI modifica (risposta, rivelazione, avanti): se la pagina
+     si ricarica o il PC va in standby, la sessione riparte da dove era (vedi "avvio") */
+  function save(){ if(S) S.ts = Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+  function contentSig(){ return sigOf({domande: C.domande, foto: C.foto}); }
   function today(){ return new Date().toISOString().slice(0,10); }
   function catName(c){ return (C.categorie[c] ? C.categorie[c].icona + " " + C.categorie[c].nome : c); }
   function shuffle(a){
@@ -199,7 +202,9 @@
   function genRoom(){ var s = ""; for(var i = 0; i < 5; i++) s += ALPHA.charAt(Math.floor(Math.random() * ALPHA.length)); return s; }
   function joinUrl(){ return location.href.replace(/[#?].*$/, "").replace(/[^\/]*$/, "") + "join.html?r=" + NET.room; }
 
-  function netStart(room){
+  /* keep = true quando la stanza arriva dal salvataggio (refresh della pagina): se l'ID risulta
+     ancora occupato dalla sessione precedente riprovo con LO STESSO codice (il QR sul tablet resta valido) */
+  function netStart(room, keep){
     if(typeof Peer === "undefined"){ NET.err = "Libreria online non caricata."; return; }
     NET.ready = false; NET.room = room;
     var opts = {debug: 0};
@@ -207,24 +212,44 @@
     var p = new Peer("stow1to5-" + room, opts);
     NET.peer = p;
     p.on("open", function(){
-      NET.ready = true; NET.err = "";
+      NET.ready = true; NET.err = ""; NET.idTries = 0;
       try{ localStorage.setItem(RKEY, room); }catch(e){}
       refreshLive();
     });
     p.on("connection", onConn);
     p.on("disconnected", function(){ try{ p.reconnect(); }catch(e){} });
     p.on("error", function(e){
-      if(e.type === "unavailable-id"){ try{ p.destroy(); }catch(x){} netStart(genRoom()); }
+      if(e.type === "unavailable-id"){
+        try{ p.destroy(); }catch(x){}
+        NET.idTries = (NET.idTries || 0) + 1;
+        if(keep && NET.idTries <= 25){
+          NET.err = "Ripristino del collegamento (stanza " + room.toUpperCase() + ")...";
+          refreshLive();
+          setTimeout(function(){ netStart(room, true); }, 3000);
+        } else { NET.idTries = 0; netStart(genRoom(), false); }
+      }
       else { NET.err = "Errore di rete: " + e.type; NET.ready = false; refreshLive(); }
     });
   }
 
   function sendTo(c, m){ try{ if(c && c.open) c.send(m); }catch(e){} }
 
+  /* controllo periodico: se un tablet non da' segni di vita da 25 secondi (standby, rete caduta)
+     lo considero scollegato, cosi' il coach puo' inserire le risposte a mano */
+  setInterval(function(){
+    var changed = false, now = Date.now();
+    Object.keys(NET.conns).forEach(function(l){
+      var c = NET.conns[l];
+      if(c && c._pinger && c._seen && now - c._seen > 25000){ try{ c.close(); }catch(e){} delete NET.conns[l]; changed = true; }
+    });
+    if(changed) refreshLive();
+  }, 5000);
+
   function onConn(c){
     NET.stats.inc++; NET.stats.last = "connessione in arrivo alle " + new Date().toLocaleTimeString();
+    c._seen = Date.now();
     refreshLive();
-    c.on("data", function(m){ handleMsg(c, m); });
+    c.on("data", function(m){ c._seen = Date.now(); handleMsg(c, m); });
     c.on("close", function(){
       Object.keys(NET.conns).forEach(function(l){ if(NET.conns[l] === c) delete NET.conns[l]; });
       refreshLive();
@@ -234,6 +259,14 @@
 
   function handleMsg(c, m){
     if(!m || typeof m !== "object") return;
+    if(m.t === "ping"){   /* battito di vita del tablet */
+      c._pinger = true; sendTo(c, {t:"pong"});
+      /* se il messaggio di ingresso si e' perso (es. rete tornata dopo lo standby) registro il login da qui */
+      var pl0 = String(m.login || "").trim().toLowerCase().slice(0, 30);
+      var cur = pl0 && NET.conns[pl0];
+      if(pl0 && (!c._login || (cur !== c && (!cur || !cur.open)))) handleMsg(c, {t: "hello", login: pl0});
+      return;
+    }
     if(m.t === "hello"){
       NET.stats.hello++; NET.stats.last = "login ricevuto alle " + new Date().toLocaleTimeString();
       var login = String(m.login || "").trim().toLowerCase().slice(0, 30);
@@ -290,10 +323,27 @@
             opts: S.perm[S.i].map(function(o){ return d.opts[o]; }),
             picked: pk == null ? null : pk, hasImg: !!d.img };
       if(rev){ m.revealed = true; m.right = S.right[S.i]; m.gained = rev.pts[login] || 0; m.why = d.why; }
+      /* traduzioni (en/es/fr) con le risposte nello stesso ordine mescolato; la spiegazione solo a risposta rivelata */
+      m.catTr = catTranslations(it.cat);
+      m.tr = {};
+      LANGS.forEach(function(L){
+        var t = d.tr && d.tr[L];
+        if(!t || !Array.isArray(t.opts) || t.opts.length !== d.opts.length || !t.q) return;
+        m.tr[L] = { q: t.q, opts: S.perm[S.i].map(function(o){ return t.opts[o]; }), why: rev ? (t.why || "") : "" };
+      });
     } else {
-      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: C.foto[it.ref].titolo };
+      var f = C.foto[it.ref];
+      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: f.titolo, tr: {} };
+      LANGS.forEach(function(L){ if(f.tr && f.tr[L] && f.tr[L].titolo) m.tr[L] = {titolo: f.tr[L].titolo}; });
     }
     sendTo(c, m);
+  }
+  var LANGS = ["en", "es", "fr"];
+  function catTranslations(c){
+    var out = {}, cat = C.categorie[c];
+    if(!cat) return out;
+    LANGS.forEach(function(L){ if(cat.tr && cat.tr[L]) out[L] = (cat.icona ? cat.icona + " " : "") + cat.tr[L]; });
+    return out;
   }
   function broadcast(){ Object.keys(NET.conns).forEach(pushState); }
 
@@ -477,6 +527,30 @@
       });
     });
     NET.inputs = inputs;
+    /* scansione dei login dal PC del coach: lo scanner "scrive" il codice e preme Invio (o Tab) */
+    var scanMsg = h("span", {class:"mut", role:"status", style:"font-size:16px"});
+    var scan = h("input", {type:"text", id:"scanLogin", placeholder:"🔫 Scansiona qui il login (o scrivilo e premi Invio)",
+      autocomplete:"off", autocapitalize:"none", spellcheck:"false", "aria-label":"Scansiona il login di un associate"});
+    function addScanned(){
+      var v = scan.value.trim().toLowerCase().slice(0, 30);
+      scan.value = "";
+      if(!v) return;
+      if(inputs.some(function(x){ return x.value.trim().toLowerCase() === v; })){ scanMsg.textContent = v + " è già nell'elenco"; return; }
+      var free = inputs.find(function(x){ return !x.value.trim(); });
+      if(!free){ scanMsg.textContent = "Elenco pieno: massimo 5 login."; return; }
+      free.value = v; free.dataset.prev = v; free.dataset.auto = "";
+      if(NET.skip) delete NET.skip[v];
+      scanMsg.textContent = "✔ Aggiunto: " + v;
+    }
+    scan.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.keyCode === 13 || (e.key === "Tab" && scan.value.trim())){ e.preventDefault(); addScanned(); }
+    });
+    /* anche nei 5 campi: Invio dallo scanner passa al campo successivo */
+    inputs.forEach(function(x, k){
+      x.addEventListener("keydown", function(e){
+        if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); (inputs[k + 1] || scan).focus(); }
+      });
+    });
     var chks = Object.keys(C.categorie).map(function(c){
       return h("label", {class:"chk"}, h("input", {type:"checkbox", value:c, checked:true}), catName(c));
     });
@@ -492,9 +566,10 @@
         NET.lobbyEl),
       h("div", {class:"card"},
         h("h2", null, "Nuova sessione"),
-        h("p", {class:"mut"}, "I login aggiunti dal tablet compaiono qui da soli. Puoi aggiungere o correggere a mano (da 1 a 5 login)."),
+        h("p", {class:"mut"}, "I login aggiunti dal tablet compaiono qui da soli. Puoi anche scansionarli qui sotto o scriverli a mano (da 1 a 5 login)."),
         C._custom ? h("div", {class:"banner"}, "✏ Stai usando domande modificate nell'editor (" + C.domande.length + " domande, " + C.foto.length + " foto).") : null,
         C._discarded ? h("div", {class:"banner"}, "ℹ contenuti.js è stato aggiornato: ho scartato le vecchie modifiche salvate nel browser.") : null,
+        h("div", {style:"margin-bottom:12px"}, scan, scanMsg),
         h("div", {class:"grid5"}, inputs),
         h("p", null, "Nome sessione (facoltativo)"), sessName,
         h("p", null, "Argomenti da includere"),
@@ -511,7 +586,7 @@
             if(!cats.length){ err.textContent = "Seleziona almeno un argomento."; return; }
             startSession(logins, cats, sessName.value.trim());
           }}, "Inizia il quiz ▶"),
-          prev && !prev.done ? h("button", {onclick:function(){ S = prev; NET.lobbyEl = null; render(); }}, "Riprendi sessione in corso") : null,
+          prev && !prev.done && prev.sig === contentSig() ? h("button", {onclick:function(){ S = prev; NET.lobbyEl = null; render(); }}, "Riprendi sessione in corso") : null,
           h("span", {class:"spacer"}),
           h("button", {onclick: viewEditor}, "✏ Modifica domande"),
           h("button", {class:"ghost", onclick:function(){ exportCsv(true); }}, "⬇ Esporta storico CSV")
@@ -521,6 +596,7 @@
     document.getElementById("hdrInfo").textContent = "";
     autofillLogins();
     broadcast();
+    try{ scan.focus(); }catch(e){}
   }
 
   /* =====================================================================
@@ -564,13 +640,21 @@
       if(ok < 0) return {error: label + ": scegli la risposta corretta (deve avere un testo)."};
       var qd = {cat: d.cat, q: q, opts: opts, ok: ok, why: String(d.why || "").trim()};
       if(String(d.img || "").trim()) qd.img = String(d.img).trim();
+      /* traduzioni: le conservo solo se il numero di risposte non e' cambiato (altrimenti non combacerebbero) */
+      if(d.tr && typeof d.tr === "object"){
+        var keepTr = {};
+        Object.keys(d.tr).forEach(function(L){ var t = d.tr[L]; if(t && Array.isArray(t.opts) && t.opts.length === opts.length) keepTr[L] = t; });
+        if(Object.keys(keepTr).length) qd.tr = keepTr;
+      }
       out.domande.push(qd);
     }
     for(m = 0; m < W.foto.length; m++){
       var f = W.foto[m], t2 = String(f.titolo || "").trim();
       if(!C.categorie[f.cat]) return {error: "Foto " + (m + 1) + ": argomento non valido."};
       if(!t2) return {error: "Foto " + (m + 1) + ": manca il titolo."};
-      out.foto.push({cat: f.cat, titolo: t2, img: String(f.img || "").trim(), note: String(f.note || "").trim()});
+      var fo = {cat: f.cat, titolo: t2, img: String(f.img || "").trim(), note: String(f.note || "").trim()};
+      if(f.tr && typeof f.tr === "object") fo.tr = f.tr;
+      out.foto.push(fo);
     }
     if(!out.domande.length) return {error: "Serve almeno una domanda."};
     return out;
@@ -592,8 +676,8 @@
           var o = JSON.parse(r.result);
           if(!o || !Array.isArray(o.domande) || !Array.isArray(o.foto)) throw new Error("formato non valido");
           W = {
-            domande: o.domande.map(function(d){ return {cat: d.cat, q: d.q || "", opts: Array.isArray(d.opts) ? d.opts : [], ok: Number(d.ok) || 0, why: d.why || "", img: d.img || ""}; }),
-            foto: o.foto.map(function(f){ return {cat: f.cat, titolo: f.titolo || "", img: f.img || "", note: f.note || ""}; })
+            domande: o.domande.map(function(d){ return {cat: d.cat, q: d.q || "", opts: Array.isArray(d.opts) ? d.opts : [], ok: Number(d.ok) || 0, why: d.why || "", img: d.img || "", tr: d.tr}; }),
+            foto: o.foto.map(function(f){ return {cat: f.cat, titolo: f.titolo || "", img: f.img || "", note: f.note || "", tr: f.tr}; })
           };
           msg.textContent = ""; draw();
         }catch(e){ msg.textContent = "Importazione non riuscita: " + e.message; }
@@ -733,7 +817,7 @@
       perm[i] = p; right[i] = pos;
     });
     S = { name: name || "Sessione", date: today(), players: logins, cats: cats, order: order,
-          perm: perm, right: right, i: 0, picks: {}, res: {}, noteOpen: {}, done: false, stored: false };
+          perm: perm, right: right, i: 0, picks: {}, res: {}, noteOpen: {}, done: false, stored: false, sig: contentSig() };
     NET.lobbyEl = null;
     save(); render();
   }
@@ -745,6 +829,15 @@
     var w = window.open("punteggi.html", "stow1to5_punteggi", "width=1000,height=720");
     if(w){ try{ w.focus(); }catch(e){} }
     else alert("Il browser ha bloccato la finestra. Apri a mano punteggi.html nello stesso browser.");
+  }
+  /* termina subito la sessione: salva, esporta (con almeno 3 partecipanti) e avvisa i tablet */
+  function endNow(){
+    if(!S || S.done) return;
+    if(!confirm("Terminare subito la sessione?\nLe domande non ancora rivelate non verranno contate.")) return;
+    S.done = true; save(); storeHistory(); autoExport(); render();
+  }
+  function endBtn(){
+    return h("button", {class:"ghost small", onclick: endNow, title: "Chiude la sessione adesso e salva i risultati"}, "⏹ Termina sessione");
   }
   function scoresBtn(){
     return h("button", {class:"ghost small", onclick: openScores, title: "Apre i punteggi in una finestra separata (solo per il coach)"}, "📊 Punteggi (coach)");
@@ -766,10 +859,14 @@
     var table = h("table", {class:"ans"});
     S.players.forEach(function(p){
       var online = !!NET.conns[p];
+      var manual = !!(NET.manual && NET.manual[i + ":" + p]);
       var tr = h("tr", null, h("th", {scope:"row"}, p + (online ? " 📱" : "")));
       var td = h("td", {class:"btns"});
-      if(online){
+      if(online && !manual){
         td.appendChild(h("span", {class:"mut"}, "risponde dal tablet"));
+        /* emergenza: se il tablet si blocca, il coach puo' inserire la risposta a mano */
+        if(!revealed && picks[p] == null) td.appendChild(h("button", {class:"ghost small", title:"Inserisci a mano la risposta di " + p,
+          onclick:function(){ (NET.manual = NET.manual || {})[i + ":" + p] = true; render(); }}, "✎ a mano"));
       } else {
         perm.forEach(function(_, k){
           td.appendChild(h("button", {class:"pick", "aria-pressed": String(picks[p] === k), disabled: revealed,
@@ -867,6 +964,7 @@
   function nextBtn(){
     var last = S.i >= S.order.length - 1;
     return h("button", {class:"primary", onclick:function(){
+      NET.restored = false;   /* dopo "Avanti" l'avviso di ripristino non serve piu' */
       if(last){ S.done = true; save(); storeHistory(); autoExport(); }
       else S.i++;
       save(); render();
@@ -1017,20 +1115,28 @@
     var it = S.order[S.i];
     var pct = Math.round(S.i / S.order.length * 100);
     app.replaceChildren(
+      NET.restored ? h("div", {class:"banner"}, "✔ Sessione ripristinata dopo il ricaricamento: le risposte già date sono salvate e il tablet si ricollega da solo.") : null,
       h("div", {class:"progress", role:"progressbar", "aria-valuemin":"0", "aria-valuemax":"100", "aria-valuenow": String(pct)}, h("i", {style:"width:" + pct + "%"})),
       h("div", {class:"row", style:"margin-bottom:10px"},
         h("span", {class:"mut"}, (it.k === "q" ? "Domanda " : "Foto ") + (S.i + 1) + " di " + S.order.length),
         h("span", {class:"spacer"}),
-        scoresBtn()),
+        scoresBtn(),
+        endBtn()),
       it.k === "q" ? viewQuestion() : viewPhoto());
     broadcast();
   }
 
   /* ---------- avvio ---------- */
   var savedRoom = null; try{ savedRoom = localStorage.getItem(RKEY); }catch(e){}
-  if(location.protocol !== "file:") netStart(savedRoom || genRoom());
+  if(location.protocol !== "file:") netStart(savedRoom || genRoom(), !!savedRoom);
   else NET.err = "";
   S = null;
+  /* ripristino automatico: se la pagina e' stata ricaricata a sessione in corso (errore, standby,
+     refresh) riparto dalla stessa slide con le risposte gia' date. Solo se le domande non sono cambiate. */
+  (function(){
+    var prev = load(KEY);
+    if(prev && !prev.done && prev.order && prev.sig && prev.sig === contentSig()){ S = prev; NET.restored = true; }
+  })();
   render();
 })();
 </script>
