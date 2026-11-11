@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Punteggi coach - Quiz Stow 1:5</title>
+<style>
+  :root{ --bg:#eef4fb; --card:#fff; --card2:#e6f0fc; --line:#c3d6ee; --txt:#0d2a4a; --mut:#53698a; --blue:#1565c0; --blue2:#0d47a1; --ok:#1e8e55; --ko:#d13d3d; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,Arial,sans-serif}
+  body{font-size:18px;line-height:1.4}
+  header{background:var(--blue);color:#fff;padding:12px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  header h1{font-size:20px;margin:0}
+  header small{color:#dbe9fb;font-size:14px}
+  main{max-width:1100px;margin:0 auto;padding:18px 22px 40px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
+  .mut{color:var(--mut)}
+  .note{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:16px;margin-bottom:14px}
+  .score{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .pl{flex:1 1 140px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center}
+  .pl b{display:block;font-size:16px;overflow-wrap:anywhere}
+  .pl span{font-size:30px;font-weight:800;color:var(--blue)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--blue2)}
+  .rank1{color:var(--blue);font-weight:800}
+  .ok{color:var(--ok);font-weight:700}
+  .ko{color:var(--ko);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Punteggi coach</h1>
+  <small id="info"></small>
+</header>
+<main>
+  <div class="note">Pagina riservata al coach: tienila su un'altra finestra, non sullo schermo condiviso. Si aggiorna da sola.</div>
+  <div id="view" aria-live="polite"></div>
+</main>
+
+<script>document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');</script>
+<script>
+(function(){
+  "use strict";
+  var KEY = "stow1to5_state_v2";
+  var CAT = (window.CONTENUTI && window.CONTENUTI.categorie) || {};
+  var view = document.getElementById("view"), info = document.getElementById("info");
+
+  function h(tag, attrs){
+    var el = document.createElement(tag);
+    if(attrs) for(var k in attrs){ if(k === "class") el.className = attrs[k]; else el.setAttribute(k, attrs[k]); }
+    for(var i = 2; i < arguments.length; i++){
+      var c = arguments[i];
+      if(c == null || c === false) continue;
+      el.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+    }
+    return el;
+  }
+  function catName(c){ return CAT[c] ? CAT[c].icona + " " + CAT[c].nome : c; }
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
+
+  function total(S, p){
+    var t = 0;
+    S.order.forEach(function(it, i){ if(it.k === "q" && S.res[i]) t += S.res[i].pts[p] || 0; });
+    return t;
+  }
+  function catStats(S, p){
+    var st = {};
+    S.cats.forEach(function(c){ st[c] = {ok:0, n:0}; });
+    S.order.forEach(function(it, i){
+      if(it.k === "q" && S.res[i] && st[it.cat]){ st[it.cat].n++; if(S.res[i].pts[p] > 0) st[it.cat].ok++; }
+    });
+    return st;
+  }
+  function weakArea(S, p){
+    var st = catStats(S, p), worst = null, wp = 2;
+    S.cats.forEach(function(c){ if(st[c].n > 0){ var pc = st[c].ok / st[c].n; if(pc < wp){ wp = pc; worst = c; } } });
+    return (worst && wp < 1) ? worst : null;
+  }
+
+  function draw(){
+    var S = load();
+    if(!S || !S.players || !S.order){
+      info.textContent = "";
+      view.replaceChildren(h("div", {class:"card"}, h("p", null, "Nessuna sessione in corso."),
+        h("p", {class:"mut"}, "Avvia il quiz nella pagina principale: i punteggi compariranno qui.")));
+      return;
+    }
+    info.textContent = (S.name || "Sessione") + " - " + (S.date || "");
+    var ranking = S.players.slice().sort(function(a, b){ return total(S, b) - total(S, a); });
+    var answered = S.order.filter(function(it, i){ return it.k === "q" && S.res[i]; }).length;
+    var nq = S.order.filter(function(it){ return it.k === "q"; }).length;
+
+    var bar = h("div", {class:"score"});
+    S.players.forEach(function(p){ bar.appendChild(h("div", {class:"pl"}, h("b", null, p), h("span", null, String(total(S, p))))); });
+
+    var head = h("tr", null, h("th", null, "#"), h("th", null, "Login"), h("th", null, "Punti"));
+    S.cats.forEach(function(c){ head.appendChild(h("th", null, catName(c))); });
+    head.appendChild(h("th", null, "Da rinforzare"));
+    var body = h("tbody");
+    ranking.forEach(function(p, n){
+      var st = catStats(S, p), w = weakArea(S, p);
+      var tr = h("tr", null,
+        h("td", {class: n === 0 ? "rank1" : ""}, String(n + 1)),
+        h("td", null, p), h("td", null, h("b", null, String(total(S, p)))));
+      S.cats.forEach(function(c){ var s = st[c]; tr.appendChild(h("td", null, s.n ? s.ok + "/" + s.n : "-")); });
+      tr.appendChild(h("td", {class: w ? "ko" : "ok"}, w ? (CAT[w] ? CAT[w].nome : w) : "Nessuna ✔"));
+      body.appendChild(tr);
+    });
+
+    var status = S.done ? "Sessione conclusa" : "Slide " + (S.i + 1) + " di " + S.order.length;
+    view.replaceChildren(
+      h("div", {class:"card"},
+        h("p", {class:"mut", style:"margin-top:0"}, status + " · domande già rivelate: " + answered + " di " + nq),
+        bar),
+      h("div", {class:"card"}, h("table", null, h("thead", null, head), body)));
+  }
+
+  /* si aggiorna quando la pagina del quiz salva (stesso browser) + controllo di sicurezza ogni 2 s */
+  window.addEventListener("storage", function(e){ if(!e.key || e.key === KEY) draw(); });
+  setInterval(draw, 2000);
+  draw();
+})();
+</script>
+</body>
+</html>

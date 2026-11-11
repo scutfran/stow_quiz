@@ -118,7 +118,10 @@
 <script src="peerjs.min.js"></script>
 <script src="rete.js"></script>
 <script src="qrcode.js"></script>
-<script src="contenuti.js"></script>
+<script>
+/* contenuti.js si ricarica SEMPRE dal sito (mai da una copia vecchia in memoria del browser) */
+document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
+</script>
 <script>
 (function(){
   "use strict";
@@ -136,6 +139,7 @@
     return String(hh);
   }
   var DEFAULTS_SIG = sigOf(DEFAULTS);
+  var APP_VER = "2026-11-11.3", WANT_CONTENT = "2026-11-11";   /* versione di questa pagina e del contenuti.js che si aspetta */
   (function applyOverride(){
     try{
       var o = JSON.parse(localStorage.getItem(CKEY));
@@ -333,7 +337,7 @@
       });
     } else {
       var f = C.foto[it.ref];
-      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: f.titolo, tr: {} };
+      m = { t:"photo", n: S.i + 1, of: S.order.length, titolo: f.titolo, tr: {}, catTr: catTranslations(it.cat) };
       LANGS.forEach(function(L){ if(f.tr && f.tr[L] && f.tr[L].titolo) m.tr[L] = {titolo: f.tr[L].titolo}; });
     }
     sendTo(c, m);
@@ -510,6 +514,24 @@
     return (worst && wp < 1) ? worst : null;
   }
 
+  /* avviso se il contenuti.js in uso e' vecchio o senza traduzioni + riga di versione */
+  function contentWarning(){
+    var noTr = C.domande.filter(function(d){ return !(d.tr && d.tr.en && d.tr.es && d.tr.fr); }).length;
+    var old = C.versione !== WANT_CONTENT;
+    var box = h("div", null);
+    if(old){
+      box.appendChild(h("div", {class:"banner", role:"alert", style:"background:#fff3cd;color:#664d03;border-color:#ffe69c"},
+        "⚠ Stai usando una versione VECCHIA di contenuti.js (" + (C.versione || "senza versione") + "): mancano le domande aggiornate e le traduzioni. " +
+        "Premi Ctrl+F5 sul PC. Se resta così, controlla che contenuti.js sia stato caricato su GitHub."));
+    } else if(noTr){
+      box.appendChild(h("div", {class:"banner", style:"background:#fff3cd;color:#664d03;border-color:#ffe69c"},
+        "ℹ " + noTr + " domand" + (noTr === 1 ? "a" : "e") + " senza traduzione completa (EN/ES/FR): sul tablet resteranno in italiano."));
+    }
+    box.appendChild(h("p", {class:"mut", style:"font-size:14px;margin:0 0 10px"},
+      "Versione app " + APP_VER + " · contenuti " + (C.versione || "?") + " · " + C.domande.length + " domande, " + C.foto.length + " foto"));
+    return box;
+  }
+
   /* ---------- setup ---------- */
   function viewSetup(){
     var prev = load(KEY);
@@ -569,6 +591,7 @@
         h("p", {class:"mut"}, "I login aggiunti dal tablet compaiono qui da soli. Puoi anche scansionarli qui sotto o scriverli a mano (da 1 a 5 login)."),
         C._custom ? h("div", {class:"banner"}, "✏ Stai usando domande modificate nell'editor (" + C.domande.length + " domande, " + C.foto.length + " foto).") : null,
         C._discarded ? h("div", {class:"banner"}, "ℹ contenuti.js è stato aggiornato: ho scartato le vecchie modifiche salvate nel browser.") : null,
+        contentWarning(),
         h("div", {style:"margin-bottom:12px"}, scan, scanMsg),
         h("div", {class:"grid5"}, inputs),
         h("p", null, "Nome sessione (facoltativo)"), sessName,
@@ -661,7 +684,7 @@
   }
   function contentAsJs(v){
     return "/* Contenuti del quiz generati dall'editor interno. Carica questo file su GitHub al posto di contenuti.js */\n" +
-      "window.CONTENUTI = " + JSON.stringify({categorie: C.categorie, puntiDomanda: C.puntiDomanda, domande: v.domande, foto: v.foto}, null, 2) + ";\n";
+      "window.CONTENUTI = " + JSON.stringify({versione: C.versione, categorie: C.categorie, puntiDomanda: C.puntiDomanda, domande: v.domande, foto: v.foto}, null, 2) + ";\n";
   }
 
   function viewEditor(){
@@ -1114,7 +1137,7 @@
     if(S.done){ app.replaceChildren(viewResults()); broadcast(); return; }
     var it = S.order[S.i];
     var pct = Math.round(S.i / S.order.length * 100);
-    app.replaceChildren(
+    var kids = [
       NET.restored ? h("div", {class:"banner"}, "✔ Sessione ripristinata dopo il ricaricamento: le risposte già date sono salvate e il tablet si ricollega da solo.") : null,
       h("div", {class:"progress", role:"progressbar", "aria-valuemin":"0", "aria-valuemax":"100", "aria-valuenow": String(pct)}, h("i", {style:"width:" + pct + "%"})),
       h("div", {class:"row", style:"margin-bottom:10px"},
@@ -1122,7 +1145,9 @@
         h("span", {class:"spacer"}),
         scoresBtn(),
         endBtn()),
-      it.k === "q" ? viewQuestion() : viewPhoto());
+      it.k === "q" ? viewQuestion() : viewPhoto()
+    ].filter(Boolean);   /* niente null: replaceChildren(null) scriverebbe la parola "null" nella pagina */
+    app.replaceChildren.apply(app, kids);
     broadcast();
   }
 

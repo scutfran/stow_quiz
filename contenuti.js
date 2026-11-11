@@ -10,6 +10,7 @@
            (piu' immagini separate da virgola) o il link di condivisione di Google Drive.
    ========================================================================= */
 window.CONTENUTI = {
+  "versione": "2026-11-11",
   "categorie": {
     "bin": { "nome": "Bin etiquette", "icona": "📦",
       "tr": { "en": "Bin etiquette", "es": "Etiqueta de bin", "fr": "Étiquette de bin" } },

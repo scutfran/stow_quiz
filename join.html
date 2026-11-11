@@ -15,9 +15,13 @@
   header span{font-size:15px;color:#dbe9fb;overflow-wrap:anywhere;text-align:right}
   header .hr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
   .langs{display:flex;gap:6px}
-  .langs button{width:auto;min-height:42px;margin:0;padding:6px 12px;font-size:17px;font-weight:800;border:1.5px solid #dbe9fb;
-    background:transparent;color:#fff;border-radius:10px;justify-content:center;text-align:center;align-items:center}
-  .langs button[aria-pressed=true]{background:#fff;color:var(--blue2);border-color:#fff}
+  .langs button{width:auto;min-height:58px;margin:0;padding:5px 9px;font-size:15px;font-weight:800;border:2px solid transparent;
+    background:rgba(255,255,255,.12);color:#fff;border-radius:10px;display:flex;flex-direction:column;gap:3px;
+    justify-content:center;text-align:center;align-items:center}
+  .langs .fl{display:block;line-height:0}
+  .langs .fl svg{display:block;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .langs .lc{line-height:1;color:inherit;font-size:15px;text-align:center}
+  .langs button[aria-pressed=true]{background:#fff;color:var(--blue2);border-color:#ffb020}
   main{padding:16px 16px 40px;max-width:820px;margin:0 auto}
   .banner{background:#fff3cd;color:#664d03;border:1px solid #ffe69c;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:17px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
@@ -448,15 +452,32 @@
       opts: t && t.opts && s.opts && t.opts.length === s.opts.length ? t.opts : s.opts,
       why: t && t.why ? t.why : s.why,
       titolo: t && t.titolo ? t.titolo : s.titolo,
-      cat: (LANG !== "it" && s.catTr && s.catTr[LANG]) || s.cat
+      cat: (LANG !== "it" && s.catTr && s.catTr[LANG]) || s.cat,
+      missing: LANG !== "it" && !t          /* lingua scelta ma il coach non ha inviato la traduzione */
     };
   }
+  /* avviso visibile quando la traduzione manca, invece di non cambiare niente senza spiegare */
+  function missingNote(x){
+    if(!x.missing) return null;
+    return h("p", {class: "banner", role: "alert"}, "⚠ Traduzione non disponibile: il coach deve ricaricare la pagina con Ctrl+F5. Intanto la domanda resta in italiano.");
+  }
+  /* bandiere disegnate in SVG (le bandiere emoji non si vedono su Windows/Kindle) */
+  var FLAGS = {
+    it: '<svg viewBox="0 0 3 2" width="34" height="23" aria-hidden="true"><rect width="1" height="2" fill="#009246"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#CE2B37"/></svg>',
+    es: '<svg viewBox="0 0 3 2" width="34" height="23" aria-hidden="true"><rect width="3" height="2" fill="#AA151B"/><rect y="0.5" width="3" height="1" fill="#F1BF00"/></svg>',
+    fr: '<svg viewBox="0 0 3 2" width="34" height="23" aria-hidden="true"><rect width="1" height="2" fill="#0055A4"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#EF4135"/></svg>',
+    en: '<svg viewBox="0 0 60 40" width="34" height="23" preserveAspectRatio="none" aria-hidden="true"><rect width="60" height="40" fill="#012169"/>' +
+        '<path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="8"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" stroke-width="3.5"/>' +
+        '<path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="13"/><path d="M30,0 V40 M0,20 H60" stroke="#C8102E" stroke-width="7.5"/></svg>'
+  };
   var langBox = document.getElementById("langs");
   function paintLangs(){
     langBox.replaceChildren();
     [["it", "IT", "Italiano"], ["en", "EN", "English"], ["es", "ES", "Español"], ["fr", "FR", "Français"]].forEach(function(L){
-      langBox.appendChild(h("button", {type: "button", "aria-pressed": String(LANG === L[0]), "aria-label": L[2], title: L[2],
-        onclick: function(){ LANG = L[0]; paintLangs(); draw(); }}, L[1]));
+      var b = h("button", {type: "button", "aria-pressed": String(LANG === L[0]), "aria-label": L[2], title: L[2],
+        onclick: function(){ LANG = L[0]; paintLangs(); draw(); }});
+      b.innerHTML = '<span class="fl">' + FLAGS[L[0]] + '</span><span class="lc">' + L[1] + '</span>';   /* testo fisso, nessun dato esterno */
+      langBox.appendChild(b);
     });
   }
   function resetLang(){ if(LANG !== "it"){ LANG = "it"; paintLangs(); } }
@@ -494,6 +515,7 @@
     var x = tq(s);
     var card = h("div", {class: "card"},
       h("div", {class: "turn"}, T("turn"), h("b", null, pl.login)),
+      missingNote(x),
       h("span", {class: "tag"}, x.cat + " - " + s.n + "/" + s.of),
       h("div", {class: "q"}, x.q),
       s.hasImg ? h("p", {class: "mut"}, T("lookImg")) : null);
@@ -545,6 +567,7 @@
         (rev ? (p.st.gained > 0 ? "✔ " : "✘ ") : "… ") + p.login));
     });
     view.replaceChildren(h("div", {class: "card"},
+      missingNote(x),
       h("span", {class: "tag"}, x.cat + " - " + s.n + "/" + s.of),
       h("div", {class: "q"}, x.q),
       h("div", {class: "right"}, T("correct") + LETTERS[s.right] + " - " + x.opts[s.right]),
