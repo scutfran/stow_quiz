@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz Stow 1:5 - Versione di riserva (solo PC)</title>
+<style>
+  :root{ --bg:#eef4fb; --card:#fff; --card2:#e6f0fc; --line:#c3d6ee; --txt:#0d2a4a; --mut:#53698a;
+         --blue:#1565c0; --blue2:#0d47a1; --ok:#1e8e55; --ko:#d13d3d; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,Arial,sans-serif}
+  body{font-size:20px;line-height:1.4;min-height:100vh}
+  header{background:var(--blue);color:#fff;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:21px;margin:0}
+  header small{color:#dbe9fb;font-size:15px}
+  main{max-width:1150px;margin:0 auto;padding:20px 24px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 26px;margin-bottom:16px;box-shadow:0 2px 8px rgba(21,101,192,.08)}
+  h2{margin:0 0 10px;font-size:28px;color:var(--blue2)}
+  .mut{color:var(--mut)}
+  .center{text-align:center}
+  button{font:inherit;cursor:pointer;border-radius:12px;border:1.5px solid var(--blue);background:#fff;color:var(--blue2);padding:10px 18px}
+  button:hover:not(:disabled){background:var(--card2)}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--blue2);outline-offset:2px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+  button.primary:hover:not(:disabled){background:var(--blue2)}
+  button.ghost{border-color:var(--line);color:var(--mut)}
+  button.small{padding:6px 12px;font-size:16px}
+  button.danger{border-color:var(--ko);color:var(--ko)}
+  button.big{font-size:24px;padding:16px 30px}
+  input[type=text]{font:inherit;width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--txt)}
+  .grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  label.chk{display:flex;gap:10px;align-items:center;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;background:#f7faff;cursor:pointer}
+  label.chk input{width:22px;height:22px;accent-color:var(--blue)}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .spacer{flex:1}
+  .banner{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:17px}
+  .warn{background:#fff3cd;color:#664d03;border-color:#ffe69c}
+  .progress{height:8px;background:#d5e3f5;border-radius:6px;overflow:hidden;margin-bottom:10px}
+  .progress i{display:block;height:100%;background:var(--blue)}
+  .tag{display:inline-block;padding:3px 12px;border-radius:99px;background:var(--card2);border:1px solid var(--line);color:var(--blue2);font-size:15px;margin-bottom:10px}
+  .q{font-size:30px;font-weight:700;margin:6px 0 16px}
+  .opt{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;padding:14px 18px;margin-bottom:10px;border:2px solid var(--line);border-radius:12px;background:#f7faff;color:var(--txt);font-size:22px}
+  button.opt:hover{border-color:var(--blue);background:var(--card2)}
+  .opt .L{font-weight:800;color:var(--blue);min-width:28px}
+  .opt.right{border-color:var(--ok);background:rgba(30,142,85,.12)}
+  .opt.wrong{opacity:.55}
+  .why{border-left:5px solid var(--blue);background:var(--card2);padding:12px 16px;border-radius:8px;margin:12px 0}
+  .turn{font-size:22px;margin-bottom:8px}
+  .turn b{color:var(--blue);font-size:30px}
+  .bigicon{font-size:84px;line-height:1.1;margin:4px 0}
+  .okicon{color:var(--ok)}
+  .name{font-size:44px;font-weight:800;color:var(--blue);margin:6px 0 20px;overflow-wrap:anywhere}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chips span{padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:#f7faff;font-weight:700}
+  .res-ok{color:var(--ok);font-weight:800}
+  .res-ko{color:var(--ko);font-weight:800}
+  .qimg img{max-width:100%;max-height:34vh;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;display:block;margin-bottom:14px}
+  .photo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:start}
+  @media(max-width:900px){.photo{grid-template-columns:1fr}}
+  .imgbox{background:#f3f8ff;border:2px dashed var(--line);border-radius:14px;aspect-ratio:3/4;height:min(66vh,820px);max-width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;overflow:hidden;padding:10px}
+  .imgbox img{width:100%;min-height:0;flex:1 1 0;object-fit:contain;border-radius:8px;cursor:zoom-in}
+  #lb{position:fixed;inset:0;z-index:100;background:rgba(6,20,40,.95);display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+  #lb img{max-width:98vw;max-height:96vh}
+  .langs{display:flex;gap:6px}
+  .langs button{min-height:56px;padding:5px 9px;font-size:15px;font-weight:800;border:2px solid transparent;background:var(--card2);color:var(--blue2);
+    border-radius:10px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center}
+  .langs button[aria-pressed=true]{background:#fff;border-color:#ffb020}
+  .langs svg{display:block;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.3)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--blue2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 Quiz Stow 1:5 · versione di riserva (solo PC)</h1>
+  <small id="hdr"></small>
+</header>
+<main id="app" aria-live="polite"></main>
+
+<script src="contenuti.js"></script>
+<script src="xlsx.js"></script>
+<script>
+(function(){
+  "use strict";
+  /* =====================================================================
+     VERSIONE DI RISERVA: tutto sul PC, nessun tablet, nessuna connessione.
+     Gli associate si passano il PC a turno. Dopo ogni risposta si vede solo
+     la conferma, mai la scelta di chi ha risposto prima.
+     Funziona anche aprendo il file dal PC senza internet (stessa cartella
+     di contenuti.js e delle foto).
+     ===================================================================== */
+  var app = document.getElementById("app"), hdr = document.getElementById("hdr");
+  if(!window.CONTENUTI){
+    app.innerHTML = '<div class="card"><h2>contenuti.js non trovato</h2><p>Questo file deve stare nella stessa cartella di contenuti.js e delle foto.</p></div>';
+    return;
+  }
+  var C = window.CONTENUTI;
+  var KEY = "stow1to5_offline_v1", HKEY = "stow1to5_offline_hist_v1";
+  var LETTERS = ["A","B","C","D","E","F"], MAXP = 5, AUTO_MIN = 3, PTS = C.puntiDomanda || 10;
+  var S = null;                                   /* stato della sessione (salvato a ogni passo) */
+  var UIS = {answering: null, lang: "it", endAsk: false, showScores: false};   /* stato solo a schermo */
+
+  /* ---------- helpers ---------- */
+  function h(tag, attrs){
+    var el = document.createElement(tag);
+    if(attrs){ for(var k in attrs){
+      var v = attrs[k];
+      if(k === "class") el.className = v;
+      else if(k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
+      else if(v === true) el.setAttribute(k, "");
+      else if(v !== false && v != null) el.setAttribute(k, v);
+    }}
+    for(var i = 2; i < arguments.length; i++){
+      var c = arguments[i];
+      if(c == null || c === false) continue;
+      if(Array.isArray(c)) c.forEach(function(x){ if(x) el.appendChild(x.nodeType ? x : document.createTextNode(String(x))); });
+      else el.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+    }
+    return el;
+  }
+  function show(){ var kids = Array.prototype.slice.call(arguments).filter(Boolean); app.innerHTML = ""; kids.forEach(function(k){ app.appendChild(k); }); window.scrollTo(0, 0); }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+  function today(){ var d = new Date(), p = function(n){ return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
+  /* turno in base all'ora di inizio del coaching: 06:30-14:29 Early, 14:30-22:29 Late, resto Night */
+  function shiftOf(d){
+    var m = d.getHours() * 60 + d.getMinutes();
+    if(m >= 390 && m < 870) return "Early Shift";
+    if(m >= 870 && m < 1350) return "Late Shift";
+    return "Night Shift";
+  }
+  function stamp(){ var d = new Date(), p = function(n){ return (n < 10 ? "0" : "") + n; }; return today() + "_" + p(d.getHours()) + p(d.getMinutes()); }
+  function sig(){ var s = JSON.stringify({d: C.domande, f: C.foto}), x = 5381; for(var i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0; return String(x); }
+  function shuffle(a){ for(var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function catName(c, lang){
+    var cat = C.categorie[c]; if(!cat) return c;
+    var n = (lang && lang !== "it" && cat.tr && cat.tr[lang]) || cat.nome;
+    return (cat.icona ? cat.icona + " " : "") + n;
+  }
+  function imgList(s){ return String(s || "").split(",").map(function(x){ return x.trim(); }).filter(Boolean).map(imgUrl); }
+  function imgUrl(s){
+    var m = s.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || s.match(/[?&]id=([\w-]+)/);
+    if(m) return "https://drive.google.com/thumbnail?id=" + m[1] + "&sz=w1600";
+    return s;
+  }
+  function zoom(src){
+    var lb = h("div", {id: "lb", role: "dialog", "aria-label": "Foto ingrandita", onclick: function(){ lb.remove(); }}, h("img", {src: src, alt: ""}));
+    document.body.appendChild(lb);
+  }
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ var lb = document.getElementById("lb"); if(lb) lb.remove(); } });
+
+  /* ---------- lingue (solo per la risposta in corso) ---------- */
+  var FLAGS = {
+    it: '<svg viewBox="0 0 3 2" width="34" height="23"><rect width="1" height="2" fill="#009246"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#CE2B37"/></svg>',
+    es: '<svg viewBox="0 0 3 2" width="34" height="23"><rect width="3" height="2" fill="#AA151B"/><rect y="0.5" width="3" height="1" fill="#F1BF00"/></svg>',
+    fr: '<svg viewBox="0 0 3 2" width="34" height="23"><rect width="1" height="2" fill="#0055A4"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#EF4135"/></svg>',
+    en: '<svg viewBox="0 0 60 40" width="34" height="23" preserveAspectRatio="none"><rect width="60" height="40" fill="#012169"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="8"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" stroke-width="3.5"/><path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="13"/><path d="M30,0 V40 M0,20 H60" stroke="#C8102E" stroke-width="7.5"/></svg>'
+  };
+  var UI = {
+    it: {turn: "Tocca a: ", noChange: "La risposta non si può cambiare: clicca con attenzione.", correct: "Risposta corretta: ", why: "Perché: "},
+    en: {turn: "Your turn: ", noChange: "You can't change your answer: click carefully.", correct: "Correct answer: ", why: "Why: "},
+    es: {turn: "Te toca: ", noChange: "La respuesta no se puede cambiar: haz clic con cuidado.", correct: "Respuesta correcta: ", why: "Por qué: "},
+    fr: {turn: "À vous : ", noChange: "La réponse ne peut pas être modifiée : cliquez avec attention.", correct: "Bonne réponse : ", why: "Pourquoi : "}
+  };
+  function T(k){ return (UI[UIS.lang] && UI[UIS.lang][k]) || UI.it[k]; }
+  function langBar(){
+    var box = h("div", {class: "langs", role: "group", "aria-label": "Lingua / Language"});
+    [["it","IT","Italiano"],["en","EN","English"],["es","ES","Español"],["fr","FR","Français"]].forEach(function(L){
+      var b = h("button", {type: "button", "aria-pressed": String(UIS.lang === L[0]), "aria-label": L[2], title: L[2],
+        onclick: function(){ UIS.lang = L[0]; render(); }});
+      b.innerHTML = FLAGS[L[0]] + '<span>' + L[1] + '</span>';   /* testo fisso dell'app */
+      box.appendChild(b);
+    });
+    return box;
+  }
+  /* testi della domanda nella lingua scelta, con le risposte nell'ordine mescolato della sessione */
+  function texts(d, perm){
+    var L = UIS.lang, t = L !== "it" && d.tr && d.tr[L];
+    var ok = t && t.q && Array.isArray(t.opts) && t.opts.length === d.opts.length;
+    var src = ok ? t.opts : d.opts;
+    return { q: ok ? t.q : d.q, opts: perm.map(function(o){ return src[o]; }), why: ok && t.why ? t.why : d.why, missing: L !== "it" && !ok };
+  }
+
+  /* ---------- punteggi (mai mostrati durante il quiz) ---------- */
+  function isRight(i, p){ return S.picks[i] && S.picks[i][p] === S.right[i]; }
+  function total(p){ var t = 0; S.order.forEach(function(it, i){ if(it.k === "q" && S.rev[i] && isRight(i, p)) t += PTS; }); return t; }
+  function catStats(p){
+    var st = {}; S.cats.forEach(function(c){ st[c] = {ok: 0, n: 0}; });
+    S.order.forEach(function(it, i){ if(it.k === "q" && S.rev[i] && st[it.cat]){ st[it.cat].n++; if(isRight(i, p)) st[it.cat].ok++; } });
+    return st;
+  }
+  function weak(p){
+    var st = catStats(p), worst = null, wp = 2;
+    S.cats.forEach(function(c){ if(st[c].n){ var r = st[c].ok / st[c].n; if(r < wp){ wp = r; worst = c; } } });
+    return worst && wp < 1 ? worst : null;
+  }
+  function ranking(){ return S.players.slice().sort(function(a, b){ return total(b) - total(a); }); }
+
+  /* ---------- export (stesso formato CSV della versione con tablet) ---------- */
+  function saveBlob(name, blob){
+    var url = URL.createObjectURL(blob), a = h("a", {href: url, download: name});
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+  /* formato export: intestazioni delle categorie, data gg/mm/aaaa, stile Excel */
+  var XL_HEAD = {bin: "Bin etiquette", opf: "One piece flow", mps: "Masterpack", sns: "Stowed Not Scanned", uio: "UIO"};
+  var XL_OPTS = {dateCols: ["Data"], colorScale: ["Punteggio"], highlight: {col: "da_rinforzare", value: "Niente!"}};
+  function itDate(iso){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : (iso || ""); }
+  /* righe dell'export, uguali per il file Excel e per il CSV di riserva */
+  function table(){
+    var cols = ["Shift", "Data", "Login", "Punteggio"];
+    Object.keys(C.categorie).forEach(function(c){ cols.push(XL_HEAD[c] || C.categorie[c].nome); });
+    cols.push("da_rinforzare");
+    var rows = S.players.map(function(p){
+      var st = catStats(p), w = weak(p), r = {Shift: S.shift || "", Data: itDate(S.date), Login: p, Punteggio: total(p)};
+      Object.keys(C.categorie).forEach(function(c){ r[XL_HEAD[c] || C.categorie[c].nome] = st[c] && st[c].n ? st[c].ok + "/" + st[c].n : ""; });
+      /* "Niente!" solo se ha risposto ad almeno una domanda e le ha fatte tutte giuste */
+      var ok = 0, n = 0; Object.keys(st).forEach(function(c){ ok += st[c].ok; n += st[c].n; });
+      r.da_rinforzare = w ? C.categorie[w].nome : (n > 0 && ok === n ? "Niente!" : "");
+      return r;
+    });
+    return {cols: cols, rows: rows};
+  }
+  function csv(){
+    var t = table();
+    var esc = function(v){ v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    return "\ufeff" + t.cols.join(";") + "\n" + t.rows.map(function(r){ return t.cols.map(function(c){ return esc(r[c]); }).join(";"); }).join("\n");
+  }
+  function png(){
+    var cats = S.cats, rank = ranking();
+    var colW = [70, 220, 110].concat(cats.map(function(){ return 230; })).concat([240]);
+    var W = colW.reduce(function(a, b){ return a + b; }, 0) + 60, rowH = 54, top = 150, H = top + rowH * (rank.length + 1) + 70;
+    var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    var g = cv.getContext("2d"), F = '"Segoe UI", Arial, sans-serif';
+    g.fillStyle = "#eef4fb"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#1565c0"; g.fillRect(0, 0, W, 80);
+    g.textBaseline = "middle"; g.fillStyle = "#fff"; g.font = "bold 30px " + F; g.fillText("Coaching 1:5 Stow - Punteggi (versione PC)", 30, 40);
+    g.fillStyle = "#0d2a4a"; g.font = "20px " + F; g.fillText(S.name + "  ·  " + S.date + "  ·  " + S.players.length + " partecipanti", 30, 112);
+    function cells(y, vals, bold, color){
+      var x = 30;
+      vals.forEach(function(v, k){
+        g.fillStyle = color || "#0d2a4a"; g.font = (bold ? "bold " : "") + "20px " + F;
+        var t = String(v); while(g.measureText(t).width > colW[k] - 14 && t.length > 1) t = t.slice(0, -2) + "…";
+        g.fillText(t, x + 8, y + rowH / 2); x += colW[k];
+      });
+    }
+    g.fillStyle = "#fff"; g.fillRect(30, top, W - 60, rowH * (rank.length + 1));
+    cells(top, ["#", "Login", "Punti"].concat(cats.map(function(c){ return C.categorie[c] ? C.categorie[c].nome : c; })).concat(["Da rinforzare"]), true, "#0d47a1");
+    rank.forEach(function(p, n){
+      var y = top + rowH * (n + 1), st = catStats(p), w = weak(p);
+      g.strokeStyle = "#c3d6ee"; g.beginPath(); g.moveTo(30, y); g.lineTo(W - 30, y); g.stroke();
+      cells(y, [n + 1, p, total(p)].concat(cats.map(function(c){ return st[c].n ? st[c].ok + "/" + st[c].n : "-"; })).concat([w ? C.categorie[w].nome : "Nessuna"]));
+    });
+    g.fillStyle = "#53698a"; g.font = "16px " + F; g.fillText("Documento riservato al coach", 30, H - 30);
+    var bin = atob(cv.toDataURL("image/png").split(",")[1]), arr = new Uint8Array(bin.length);
+    for(var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], {type: "image/png"});
+  }
+  function exportFiles(){
+    var base = "quiz_stow_1to5_OFFLINE_" + stamp();
+    try{ var t = table(); if(window.XLSX_EXPORT) saveBlob(base + ".xlsx", window.XLSX_EXPORT.blob(t.cols, t.rows, "Risultati", XL_OPTS)); else saveBlob(base + ".csv", new Blob([csv()], {type: "text/csv;charset=utf-8"})); }catch(e){}
+    try{ saveBlob(base + "_punteggi.png", png()); }catch(e){}
+  }
+  function finish(){
+    if(!S || S.done) return;
+    S.done = true;
+    if(!S.exported && S.players.length >= AUTO_MIN){ S.exported = true; exportFiles(); }
+    save();
+    try{ var hist = load(HKEY) || []; hist.push(JSON.parse(JSON.stringify(S))); localStorage.setItem(HKEY, JSON.stringify(hist.slice(-50))); }catch(e){}
+    UIS.endAsk = false; render();
+  }
+
+  /* ---------- setup ---------- */
+  function viewSetup(){
+    var prev = load(KEY);
+    var inputs = [];
+    for(var i = 0; i < MAXP; i++) inputs.push(h("input", {type: "text", placeholder: "login associate " + (i + 1), autocomplete: "off", "aria-label": "Login associate " + (i + 1)}));
+    var msg = h("span", {class: "mut", role: "status", style: "font-size:16px"});
+    var scan = h("input", {type: "text", placeholder: "🔫 Scansiona qui il login (o scrivilo e premi Invio)", autocomplete: "off", spellcheck: "false", "aria-label": "Scansiona il login"});
+    scan.addEventListener("keydown", function(e){
+      if(e.key !== "Enter" && !(e.key === "Tab" && scan.value.trim())) return;
+      e.preventDefault();
+      var v = scan.value.trim().toLowerCase().slice(0, 30); scan.value = "";
+      if(!v) return;
+      if(inputs.some(function(x){ return x.value.trim().toLowerCase() === v; })){ msg.textContent = v + " è già nell'elenco"; return; }
+      var free = inputs.find(function(x){ return !x.value.trim(); });
+      if(!free){ msg.textContent = "Elenco pieno: massimo " + MAXP + " login."; return; }
+      free.value = v; msg.textContent = "✔ Aggiunto: " + v;
+    });
+    inputs.forEach(function(x, k){ x.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); (inputs[k + 1] || scan).focus(); } }); });
+    var chks = Object.keys(C.categorie).map(function(c){ return h("label", {class: "chk"}, h("input", {type: "checkbox", value: c, checked: true}), catName(c)); });
+    var name = h("input", {type: "text", placeholder: "es. Sessione 1:5 - turno early", "aria-label": "Nome sessione"});
+    var err = h("p", {class: "res-ko", role: "alert"});
+    hdr.textContent = "";
+    show(
+      h("div", {class: "banner"}, "Versione di riserva: funziona solo su questo PC, senza tablet e senza connessione. Gli associate rispondono a turno sul PC e non vedono le risposte degli altri."),
+      h("div", {class: "card"},
+        h("h2", null, "Nuova sessione"),
+        h("div", {style: "margin-bottom:12px"}, scan, " ", msg),
+        h("div", {class: "grid5"}, inputs),
+        h("p", null, "Nome sessione (facoltativo)"), name,
+        h("p", null, "Argomenti da includere"),
+        h("div", {class: "grid5"}, chks),
+        err,
+        h("div", {class: "row", style: "margin-top:14px"},
+          h("button", {class: "primary", onclick: function(){
+            var logins = [];
+            inputs.forEach(function(x){ var v = x.value.trim().toLowerCase().slice(0, 30); if(v && logins.indexOf(v) < 0) logins.push(v); });
+            var cats = chks.map(function(l){ return l.firstChild; }).filter(function(x){ return x.checked; }).map(function(x){ return x.value; });
+            if(!logins.length){ err.textContent = "Inserisci almeno un login."; return; }
+            if(!cats.length){ err.textContent = "Seleziona almeno un argomento."; return; }
+            start(logins, cats, name.value.trim());
+          }}, "Inizia il quiz ▶"),
+          prev && !prev.done && prev.sig === sig() ? h("button", {onclick: function(){ S = prev; render(); }}, "Riprendi sessione in corso") : null,
+          h("span", {class: "spacer"}),
+          h("span", {class: "mut", style: "font-size:14px"}, "contenuti " + (C.versione || "?") + " · " + C.domande.length + " domande, " + C.foto.length + " foto"))));
+    scan.focus();
+  }
+
+  function start(logins, cats, name){
+    var order = [];
+    cats.forEach(function(c){
+      C.domande.forEach(function(d, idx){ if(d.cat === c) order.push({k: "q", ref: idx, cat: c}); });
+      C.foto.forEach(function(f, idx){ if(f.cat === c) order.push({k: "f", ref: idx, cat: c}); });
+    });
+    /* risposte mescolate, posizione della giusta bilanciata tra A/B/C/D */
+    var qs = []; order.forEach(function(it, i){ if(it.k === "q") qs.push(i); });
+    var targets = shuffle(qs.map(function(_, n){ return n; }));
+    var perm = {}, right = {};
+    qs.forEach(function(i, n){
+      var d = C.domande[order[i].ref], len = d.opts.length, pos = targets[n] % len, others = [];
+      for(var k = 0; k < len; k++) if(k !== d.ok) others.push(k);
+      shuffle(others);
+      var p = [], o = 0; for(var j = 0; j < len; j++) p.push(j === pos ? d.ok : others[o++]);
+      perm[i] = p; right[i] = pos;
+    });
+    S = {name: name || "Sessione", date: today(), shift: shiftOf(new Date()), players: logins, cats: cats, order: order, perm: perm, right: right,
+         i: 0, picks: {}, skip: {}, rev: {}, done: false, exported: false, sig: sig()};
+    UIS.answering = null; UIS.lang = "it";
+    save(); render();
+  }
+
+  /* ---------- barra in alto (solo coach) ---------- */
+  function topBar(){
+    var it = S.order[S.i], pct = Math.round(S.i / S.order.length * 100);
+    var endCtl = UIS.endAsk
+      ? h("span", {class: "row"}, h("b", {class: "res-ko", style: "font-size:16px"}, "Terminare adesso?"),
+          h("button", {class: "small danger", onclick: finish}, "Sì, termina"),
+          h("button", {class: "small ghost", onclick: function(){ UIS.endAsk = false; render(); }}, "No"))
+      : h("button", {class: "small ghost", onclick: function(){ UIS.endAsk = true; render(); }}, "⏹ Termina sessione");
+    return h("div", null,
+      h("div", {class: "progress", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct)}, h("i", {style: "width:" + pct + "%"})),
+      h("div", {class: "row", style: "margin-bottom:10px"},
+        h("span", {class: "mut"}, (it.k === "q" ? "Domanda " : "Foto ") + (S.i + 1) + " di " + S.order.length),
+        h("span", {class: "spacer"}), endCtl));
+  }
+  function next(){
+    UIS.answering = null; UIS.lang = "it";
+    if(S.i >= S.order.length - 1){ finish(); return; }
+    S.i++; save(); render();
+  }
+
+  /* ---------- domanda ---------- */
+  function pending(i){ return S.players.filter(function(p){ return !(S.picks[i] && S.picks[i][p] != null) && !(S.skip[i] && S.skip[i][p]); }); }
+
+  function viewQuestion(){
+    var i = S.i, it = S.order[i], d = C.domande[it.ref], perm = S.perm[i];
+    if(S.rev[i]) return viewReveal(i, d, perm);
+    var todo = pending(i);
+    if(!todo.length){
+      UIS.lang = "it";
+      return show(topBar(), h("div", {class: "card center"},
+        h("div", {class: "bigicon okicon", "aria-hidden": "true"}, "✔"),
+        h("h2", null, "Hanno risposto tutti"),
+        h("p", {class: "mut"}, "Coach: rivela la risposta e commentatela insieme."),
+        h("button", {class: "primary big", onclick: function(){ S.rev[i] = true; save(); render(); }}, "Rivela risposta")));
+    }
+    var cur = UIS.answering;
+    if(!cur || todo.indexOf(cur) < 0){
+      /* passaggio del PC: nessuna risposta visibile, solo la conferma */
+      var someone = todo.length < S.players.length;
+      var nextP = todo[0];
+      return show(topBar(), h("div", {class: "card center"},
+        someone ? h("div", {class: "bigicon okicon", "aria-hidden": "true"}, "✔") : h("div", {class: "bigicon", "aria-hidden": "true"}, "📋"),
+        h("h2", null, someone ? "Risposta registrata" : "Nuova domanda"),
+        h("p", {style: "margin-bottom:0"}, "Passa il PC a"),
+        h("div", {class: "name"}, nextP),
+        h("button", {class: "primary big", onclick: function(){ UIS.answering = nextP; UIS.lang = "it"; render(); }}, "Sono " + nextP + " ▶"),
+        h("p", null, h("button", {class: "small ghost", style: "margin-top:18px", onclick: function(){
+          (S.skip[i] = S.skip[i] || {})[nextP] = true; save(); render();
+        }}, "Salta " + nextP + " (assente)"))));
+    }
+    var x = texts(d, perm);
+    var card = h("div", {class: "card"},
+      h("div", {class: "row"}, h("div", {class: "turn"}, T("turn"), h("b", null, cur)), h("span", {class: "spacer"}), langBar()),
+      x.missing ? h("div", {class: "banner warn"}, "⚠ Traduzione non disponibile per questa domanda: resta in italiano.") : null,
+      h("span", {class: "tag"}, catName(it.cat, UIS.lang)),
+      h("div", {class: "q"}, x.q));
+    if(d.img){ var u = imgUrl(d.img); card.appendChild(h("div", {class: "qimg"}, h("img", {src: u, alt: "Immagine della domanda", onclick: function(){ zoom(u); }}))); }
+    x.opts.forEach(function(text, k){
+      card.appendChild(h("button", {class: "opt", onclick: function(){
+        (S.picks[i] = S.picks[i] || {})[cur] = k;
+        UIS.answering = null; UIS.lang = "it";
+        save(); render();
+      }}, h("span", {class: "L"}, LETTERS[k]), h("span", null, text)));
+    });
+    card.appendChild(h("p", {class: "mut", style: "margin:4px 0 0"}, T("noChange")));
+    show(topBar(), card);
+  }
+
+  function viewReveal(i, d, perm){
+    var x = texts(d, perm), r = S.right[i];
+    var opts = h("div");
+    x.opts.forEach(function(text, k){ opts.appendChild(h("div", {class: "opt" + (k === r ? " right" : " wrong")}, h("span", {class: "L"}, LETTERS[k]), h("span", null, text))); });
+    var chips = h("div", {class: "chips"});
+    S.players.forEach(function(p){
+      var sk = S.skip[i] && S.skip[i][p];
+      chips.appendChild(h("span", {class: sk ? "mut" : (isRight(i, p) ? "res-ok" : "res-ko")}, (sk ? "– " : (isRight(i, p) ? "✔ " : "✘ ")) + p + (sk ? " (assente)" : "")));
+    });
+    show(topBar(), h("div", {class: "card"},
+      h("div", {class: "row"}, h("span", {class: "tag"}, catName(S.order[i].cat, UIS.lang)), h("span", {class: "spacer"}), langBar()),
+      h("div", {class: "q"}, x.q),
+      d.img ? h("div", {class: "qimg"}, h("img", {src: imgUrl(d.img), alt: "", onclick: function(){ zoom(imgUrl(d.img)); }})) : null,
+      opts,
+      h("div", {class: "why"}, h("b", null, T("why")), x.why || ""),
+      chips,
+      h("div", {class: "row", style: "margin-top:16px"}, h("span", {class: "spacer"}),
+        h("button", {class: "primary big", onclick: next}, S.i >= S.order.length - 1 ? "Fine 🏁" : "Avanti ▶"))));
+  }
+
+  /* ---------- slide foto ---------- */
+  function viewPhoto(){
+    var f = C.foto[S.order[S.i].ref], urls = imgList(f.img);
+    var box = h("div", {class: "imgbox"});
+    urls.forEach(function(u){ box.appendChild(h("img", {src: u, alt: f.titolo, onclick: function(){ zoom(u); }})); });
+    if(!urls.length) box.appendChild(h("p", {class: "mut"}, "📷 Foto non ancora caricata"));
+    var L = UIS.lang, title = (L !== "it" && f.tr && f.tr[L] && f.tr[L].titolo) || f.titolo;
+    show(topBar(), h("div", {class: "card"}, h("div", {class: "photo"}, box,
+      h("div", null,
+        h("div", {class: "row"}, h("span", {class: "tag"}, catName(S.order[S.i].cat, L) + " - discussione a voce"), h("span", {class: "spacer"}), langBar()),
+        h("div", {class: "q"}, title),
+        h("p", {class: "mut"}, "🔍 Clicca la foto per ingrandirla."),
+        h("button", {class: "primary big", onclick: next}, S.i >= S.order.length - 1 ? "Fine 🏁" : "Avanti ▶")))));
+  }
+
+  /* ---------- fine ---------- */
+  function viewEnd(){
+    var scores = null;
+    if(UIS.showScores){
+      var head = h("tr", null, h("th", null, "#"), h("th", null, "Login"), h("th", null, "Punti"));
+      S.cats.forEach(function(c){ head.appendChild(h("th", null, catName(c))); });
+      head.appendChild(h("th", null, "Da rinforzare"));
+      var body = h("tbody");
+      ranking().forEach(function(p, n){
+        var st = catStats(p), w = weak(p), tr = h("tr", null, h("td", null, n + 1), h("td", null, p), h("td", null, h("b", null, total(p))));
+        S.cats.forEach(function(c){ tr.appendChild(h("td", null, st[c].n ? st[c].ok + "/" + st[c].n : "-")); });
+        tr.appendChild(h("td", {class: w ? "res-ko" : "res-ok"}, w ? C.categorie[w].nome : "Nessuna ✔"));
+        body.appendChild(tr);
+      });
+      scores = h("div", {class: "card"}, h("h2", null, "Punteggi (solo coach)"), h("table", null, h("thead", null, head), body));
+    }
+    show(
+      h("div", {class: "card center", style: "padding:48px 26px"},
+        h("div", {style: "font-size:64px;line-height:1"}, "🏁"),
+        h("h2", {style: "font-size:40px;margin:16px 0 10px"}, "Quiz terminato, grazie a tutti!"),
+        h("p", {style: "font-size:24px;margin:0"}, "La qualità dello stow dipende da ognuno di noi."),
+        h("div", {class: "row", style: "margin-top:36px;justify-content:center"},
+          h("button", {class: "ghost small", onclick: function(){ UIS.showScores = !UIS.showScores; render(); }}, UIS.showScores ? "Nascondi punteggi" : "📊 Punteggi (coach)"),
+          h("button", {class: "ghost small", onclick: exportFiles}, "⬇ Esporta Excel e immagine"),
+          h("button", {class: "ghost small", onclick: function(){ S = null; UIS.showScores = false; try{ localStorage.removeItem(KEY); }catch(e){} render(); }}, "Nuova sessione"))),
+      scores);
+  }
+
+  /* ---------- render ---------- */
+  function render(){
+    if(!S){ viewSetup(); return; }
+    hdr.textContent = S.name + " - " + S.date;
+    if(S.done) return viewEnd();
+    return S.order[S.i].k === "q" ? viewQuestion() : viewPhoto();
+  }
+
+  /* avvio: se la pagina si e' ricaricata a sessione in corso, riparto da dove ero */
+  var prev = load(KEY);
+  if(prev && !prev.done && prev.order && prev.sig === sig()) S = prev;
+  render();
+})();
+</script>
+</body>
+</html>

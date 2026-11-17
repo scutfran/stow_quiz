@@ -118,6 +118,7 @@
 <script src="peerjs.min.js"></script>
 <script src="rete.js"></script>
 <script src="qrcode.js"></script>
+<script src="xlsx.js"></script>
 <script>
 /* contenuti.js si ricarica SEMPRE dal sito (mai da una copia vecchia in memoria del browser) */
 document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
@@ -180,6 +181,13 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
   function save(){ if(S) S.ts = Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
   function contentSig(){ return sigOf({domande: C.domande, foto: C.foto}); }
   function today(){ return new Date().toISOString().slice(0,10); }
+  /* turno in base all'ora di inizio del coaching: 06:30-14:29 Early, 14:30-22:29 Late, resto Night */
+  function shiftOf(d){
+    var m = d.getHours() * 60 + d.getMinutes();
+    if(m >= 390 && m < 870) return "Early Shift";
+    if(m >= 870 && m < 1350) return "Late Shift";
+    return "Night Shift";
+  }
   function catName(c){ return (C.categorie[c] ? C.categorie[c].icona + " " + C.categorie[c].nome : c); }
   function shuffle(a){
     for(var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -216,7 +224,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
     var p = new Peer("stow1to5-" + room, opts);
     NET.peer = p;
     p.on("open", function(){
-      NET.ready = true; NET.err = ""; NET.idTries = 0;
+      NET.ready = true; NET.err = ""; NET.idTries = 0; NET.idBusy = false;
       try{ localStorage.setItem(RKEY, room); }catch(e){}
       refreshLive();
     });
@@ -226,14 +234,26 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
       if(e.type === "unavailable-id"){
         try{ p.destroy(); }catch(x){}
         NET.idTries = (NET.idTries || 0) + 1;
-        if(keep && NET.idTries <= 25){
-          NET.err = "Ripristino del collegamento (stanza " + room.toUpperCase() + ")...";
+        /* riprovo con lo stesso codice per ~15 secondi (la pagina precedente puo' non averlo ancora liberato),
+           poi passo da solo a un codice nuovo: il QR deve comparire sempre */
+        if(keep && NET.idTries <= 6){
+          NET.idBusy = true;
+          NET.err = "Provo a riprendere il codice stanza " + room.toUpperCase() + " (tentativo " + NET.idTries + " di 6)...";
           refreshLive();
-          setTimeout(function(){ netStart(room, true); }, 3000);
-        } else { NET.idTries = 0; netStart(genRoom(), false); }
+          clearTimeout(NET.retryT);
+          NET.retryT = setTimeout(function(){ netStart(room, true); }, 2500);
+        } else { NET.idTries = 0; NET.idBusy = false; netStart(genRoom(), false); }
       }
       else { NET.err = "Errore di rete: " + e.type; NET.ready = false; refreshLive(); }
     });
+  }
+  /* il coach non vuole aspettare: nuovo codice stanza subito (i tablet dovranno riscansionare il QR) */
+  function useNewRoom(){
+    clearTimeout(NET.retryT);
+    try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
+    NET.idTries = 0; NET.idBusy = false; NET.err = "";
+    netStart(genRoom(), false);
+    refreshLive();
   }
 
   function sendTo(c, m){ try{ if(c && c.open) c.send(m); }catch(e){} }
@@ -612,7 +632,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
           prev && !prev.done && prev.sig === contentSig() ? h("button", {onclick:function(){ S = prev; NET.lobbyEl = null; render(); }}, "Riprendi sessione in corso") : null,
           h("span", {class:"spacer"}),
           h("button", {onclick: viewEditor}, "✏ Modifica domande"),
-          h("button", {class:"ghost", onclick:function(){ exportCsv(true); }}, "⬇ Esporta storico CSV")
+          h("button", {class:"ghost", onclick:function(){ exportCsv(true); }}, "⬇ Esporta storico (Excel)")
         )
       )
     );
@@ -839,7 +859,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
       for(var j = 0; j < len; j++) p.push(j === pos ? d.ok : others[o++]);
       perm[i] = p; right[i] = pos;
     });
-    S = { name: name || "Sessione", date: today(), players: logins, cats: cats, order: order,
+    S = { name: name || "Sessione", date: today(), shift: shiftOf(new Date()), players: logins, cats: cats, order: order,
           perm: perm, right: right, i: 0, picks: {}, res: {}, noteOpen: {}, done: false, stored: false, sig: contentSig() };
     NET.lobbyEl = null;
     save(); render();
@@ -1016,7 +1036,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
       h("p", {style:"font-size:24px;margin:0"}, "La qualità dello stow dipende da ognuno di noi."),
       h("div", {class:"row", style:"margin-top:36px;justify-content:center"},
         scoresBtn(),
-        h("button", {class:"ghost small", onclick:function(){ exportCsv(false); }}, "⬇ Esporta CSV"),
+        h("button", {class:"ghost small", onclick:function(){ exportCsv(false); }}, "⬇ Esporta Excel"),
         h("button", {class:"ghost small", onclick:function(){
           S = null; try{ localStorage.removeItem(KEY); }catch(e){}
           NET.lobby = Object.keys(NET.conns); NET.skip = {};
@@ -1025,16 +1045,22 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
   }
 
   /* ---------- storico + CSV ---------- */
+  /* formato export: intestazioni delle categorie, data gg/mm/aaaa, stile Excel */
+  var XL_HEAD = { bin: "Bin etiquette", opf: "One piece flow", mps: "Masterpack", sns: "Stowed Not Scanned", uio: "UIO" };
+  var XL_OPTS = { dateCols: ["Data"], colorScale: ["Punteggio"], highlight: { col: "da_rinforzare", value: "Niente!" } };
+  function itDate(iso){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : (iso || ""); }
   function sessionRows(sess){
     var saveS = S; S = sess;
     var rows = S.players.map(function(p){
       var st = catStats(p), w = weakArea(p);
-      var row = { sessione: S.name, data: S.date, login: p, punti: total(p) };
+      var row = { Shift: S.shift || "", Data: itDate(S.date), Login: p, Punteggio: total(p) };
       Object.keys(C.categorie).forEach(function(c){
         var s = st[c];
-        row[c + "_ok"] = s ? s.ok : ""; row[c + "_tot"] = s ? s.n : "";
+        row[XL_HEAD[c] || C.categorie[c].nome] = s && s.n ? s.ok + "/" + s.n : "";
       });
-      row.da_rinforzare = w ? C.categorie[w].nome : "";
+      /* "Niente!" solo se ha risposto ad almeno una domanda e le ha fatte tutte giuste */
+      var ok = 0, n = 0; Object.keys(st).forEach(function(c){ ok += st[c].ok; n += st[c].n; });
+      row.da_rinforzare = w ? C.categorie[w].nome : (n > 0 && ok === n ? "Niente!" : "");
       return row;
     });
     S = saveS;
@@ -1068,6 +1094,18 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
     var cols = Object.keys(rows[0]);
     var esc = function(v){ v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     return "\ufeff" + cols.join(";") + "\n" + rows.map(function(r){ return cols.map(function(c){ return esc(r[c]); }).join(";"); }).join("\n");
+  }
+  /* file Excel vero (.xlsx): si apre gia' diviso in colonne. Se xlsx.js manca, ripiego sul CSV */
+  function saveTable(base, rows){
+    if(!rows.length) return false;
+    var cols = Object.keys(rows[0]);
+    if(window.XLSX_EXPORT){
+      try{ saveBlob(base + ".xlsx", window.XLSX_EXPORT.blob(cols, rows, "Risultati", XL_OPTS)); return true; }catch(e){}
+    }
+    var esc = function(v){ v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var csv = "\ufeff" + cols.join(";") + "\n" + rows.map(function(r){ return cols.map(function(c){ return esc(r[c]); }).join(";"); }).join("\n");
+    saveBlob(base + ".csv", new Blob([csv], {type: "text/csv;charset=utf-8"}));
+    return true;
   }
   /* disegna la classifica su un canvas e la restituisce come PNG */
   function scoresPng(cb){
@@ -1114,7 +1152,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
     if(!S || S.autoExported || S.players.length < AUTO_MIN) return;
     S.autoExported = true; save();
     var base = "quiz_stow_1to5_" + stamp();
-    try{ saveBlob(base + ".csv", new Blob([sessionCsv()], {type: "text/csv;charset=utf-8"})); }catch(e){}
+    try{ saveTable(base, sessionRows(S)); }catch(e){}
     try{ scoresPng(function(b){ if(b) saveBlob(base + "_punteggi.png", b); }); }catch(e){}
   }
 
@@ -1123,11 +1161,7 @@ document.write('<script src="contenuti.js?v=' + Date.now() + '"><\/script>');
     var rows = [];
     sessions.forEach(function(s){ rows = rows.concat(sessionRows(s)); });
     if(!rows.length){ alert("Nessun dato da esportare."); return; }
-    var cols = Object.keys(rows[0]);
-    var esc = function(v){ v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-    var csv = "\ufeff" + cols.join(";") + "\n" + rows.map(function(r){ return cols.map(function(c){ return esc(r[c]); }).join(";"); }).join("\n");
-    var a = h("a", {href: URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"})), download: "quiz_stow_1to5_" + today() + ".csv"});
-    document.body.appendChild(a); a.click(); a.remove();
+    saveTable((all ? "quiz_stow_1to5_storico_" : "quiz_stow_1to5_") + stamp(), rows);
   }
 
   /* ---------- render ---------- */
